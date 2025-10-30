@@ -1,0 +1,27 @@
+- **Defaults and constraints**
+  - Default to modern, stable, and well-supported stacks and patterns.
+  - Centralize configuration and branding in constants that are easy to update.
+  - Secure explicit approval before making any significant deviation from these rules.
+
+- **Scope limitations**
+  - Modify only code contained in `/Users/sreenivasanac/SoftwareProjects/file-vyasa`. Code from other directories may be shared purely as inspiration; evaluate it without editing those sources. Do not alter files in:
+    - `/Users/sreenivasanac/SoftwareProjects/ai-file-organizer`
+    - `/Users/sreenivasanac/SoftwareProjects/ai-file-sorter`
+    - `/Users/sreenivasanac/SoftwareProjects/constella`
+    - `/Users/sreenivasanac/SoftwareProjects/llama-fs`
+    - `/Users/sreenivasanac/SoftwareProjects/Local-File-Organizer`
+    - `/Users/sreenivasanac/SoftwareProjects/organize`
+
+- **Prompt usage**
+  - Do not read or modify `agentic_development_docs/used_prompts/`; those prompts are finalized and out of scope.
+  - When documentation is needed for a package, library, or framework, consult Context7.
+     - The documentation for Tauri, the frontend interface, is given here:
+        - https://tauri.app/llms-full.txt
+        - https://tauri.app/llms-full.txt
+        - https://tauri.app/start/
+    - The documentation for Agno, the agentic development framework is given here:
+        - https://docs.agno.com/llms.txt
+        - https://docs.agno.com/llms-full.txt
+    - The project repository folder path for Constella, library for auto-clustering, auto-grouping library, which is project folder path available in the local file system, is given here:
+        - `/Users/sreenivasanac/SoftwareProjects/constella`
+  - Web search tool is also available to use when appropriate and necessary.

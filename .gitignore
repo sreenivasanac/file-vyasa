@@ -1,0 +1,26 @@
+old_code/
+old_code/*
+artifacts/
+artifacts/*
+
+agentic_development_docs/project_design_plan/TODO.md
+# Ignore large/auxiliary documentation files
+agentic_development_docs/tools_documentation/*.md
+
+.claude/
+.vscode/
+
+# Ignore legacy code directory entirely
+old_code/
+
+agentic_development_docs/rough_prompts/*
+
+.env
+**/.env.local
+
+# Python build / cache artifacts
+*.egg-info/
+**/__pycache__/
+
+node_modules/*
+node_modules/

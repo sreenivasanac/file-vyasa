@@ -49,6 +49,7 @@ Elevate FileVyasa from a single-run organiser to a configurable assistant that a
 - **Visualization Service**: uses Constella embeddings to produce static UMAP scatter plot with cluster legends (rendered via matplotlib/plotly in headless mode).
 - **Rename Service**: advanced prompt templates referencing content summaries, EXIF data, and user-defined naming schemes.
 - **Audit Trail**: append-only ledger capturing plan decisions, overrides, and reasons for rejection.
+- **Config & Secrets Manager**: Stores BYOK API keys securely via OS keychain or encrypted local store.
 
 ### Workflow Evolution
 ```

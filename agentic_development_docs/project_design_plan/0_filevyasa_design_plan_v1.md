@@ -12,10 +12,10 @@ Deliver a trustworthy, human-in-the-loop desktop assistant that scans a user-sel
 ### Must Have
 - Manual directory selection and scoped crawl (one root per run, depth configurable).
 - Extraction pipelines for common document types (text, Markdown, Office docs, PDFs with embedded text) and EXIF metadata for images.
-- Constella-powered clustering to suggest 3–8 thematic groups and recommended folder names.
+- Constella-powered clustering to suggest 8-10 groups and recommended folder names.
 - Folder planning board that lists proposed moves per cluster with confidence badges and rationale snippets.
 - Plan approval workflow: user can accept/reject individual actions before any filesystem change is executed.
-- Safe executor that only moves or renames files after approval and records rollback metadata (source path, destination path, timestamp).
+- Safe executor that only moves or renames files after approval and records rollback metadata ("move", source path, destination path, timestamp) , ("rename", earlier_name, updated_name, file path).
 - Duplicate detection via hashing with clear "Mark as duplicate" suggestions (no deletions).
 - BYOK remote LLM support (OpenAI-compatible endpoint) for summarisation and naming hints.
 
@@ -45,12 +45,15 @@ Deliver a trustworthy, human-in-the-loop desktop assistant that scans a user-sel
 
 ### Module Breakdown
 - **Scan Module**: Walks directory within allowlist, collects metadata, honours ignore rules.
-- **Extraction Module**: Utilises libraries (python-magic, pdfplumber, docx2python, markdown parsing, Pillow/exifread) to produce content digests.
-- **Clustering Module**: Converts digests to Constella `ContentUnit`s, runs seeded K-Means, returns cluster labels and cohesion scores.
-- **Planning Module**: Translates clusters plus user rules into folder proposals; computes folder-organization score for whole-folder vs per-file moves.
+- **Extraction Module**: For reading different file formats, for now convert most file format types to markdown format using markitdown library https://github.com/microsoft/markitdown .  Read only first 50 lines of the markdown document. Pass this, along with the filename, metadata to an LLM to give 1. ai_brief_summary (2 lines) and 2. ai_summary (4 lines).
+- **Clustering Module**: Converts digests to Constella `ContentUnit`s, runs seeded K-Means, returns cluster labels, artifacts and embedding values.
+- **Folder structure Planning Module**: Passes three things to an LLM as a prompt:
+   - 1. cluster labels
+   - 2. user provided rules and prompts 
+   - 3. for each cluster, list of file names and summary of its file contents -> passes these to an LLM to decide folder proposal;
+- **File operation Planning module**: computes folder-organization score for whole-folder vs per-file moves - by creating a prompt: containing the ENTIRE folder tree (planned), current folder tree to operate, list of each file names and their corresponding short summary of this folder, and important metadata (file-type, etc) of files in this folder.
 - **Approval State Manager**: Stores pending actions, user overrides, and notes until execution.
 - **Execution Module**: Performs moves/renames atomically, logs steps, records rollback tokens.
-- **Config & Secrets Manager**: Stores BYOK API keys securely via OS keychain or encrypted local store.
 
 ### Agent Workflow
 ```

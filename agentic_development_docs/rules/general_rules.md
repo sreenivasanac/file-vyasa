@@ -25,3 +25,6 @@
     - The project repository folder path for Constella, library for auto-clustering, auto-grouping library, which is project folder path available in the local file system, is given here:
         - `/Users/sreenivasanac/SoftwareProjects/constella`
   - Web search tool is also available to use when appropriate and necessary.
+
+- ** Running system code instructions **
+  - Use uv when running commands related to python (python script, pytest etc), or installing libraries using pip. Do not run python or python3 command directly. or pip command directly.

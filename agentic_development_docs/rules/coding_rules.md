@@ -3,3 +3,5 @@ Go through Agno framework using Context7 MCP or Web search tool - the documentat
 - The project repository folder path for Constella, library for auto-clustering, auto-grouping library, which is project folder path available in the local file system, is given here:
 - `/Users/sreenivasanac/SoftwareProjects/constella`
 You can read the contents of folder constella when required, for design and planning.
+
+- Use uv when running commands related to python, or installing libraries using pip.

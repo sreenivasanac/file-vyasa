@@ -16,7 +16,7 @@
   - Do not read or modify `agentic_development_docs/used_prompts/`; those prompts are finalized and out of scope.
   - When documentation is needed for a package, library, or framework, consult Context7.
      - The documentation for Tauri, the frontend interface, is given here:
-        - https://tauri.app/llms-full.txt
+        - https://tauri.app/llms.txt
         - https://tauri.app/llms-full.txt
         - https://tauri.app/start/
     - The documentation for Agno, the agentic development framework is given here:

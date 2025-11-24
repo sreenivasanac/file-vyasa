@@ -9,6 +9,19 @@ Elevate FileVyasa from a single-run organiser to a configurable assistant that a
 - **Deeper Analysis**: enhance clustering with visual context and smarter whole-folder heuristics.
 - **Operational Confidence**: expand rollback and audit features without automating execution beyond approvals.
 
+
+## Features to stay in V2.x+
+
+- Rich preference/profile persistence beyond recent roots and minimal settings.
+- Local LLM/Ollama routing, model cost dashboards, or advanced model selection.
+- Visual cluster mini-maps (UMAP plots) and metrics dashboards.
+- Advanced bulk rename trays and multi-root selection.
+- Incremental planning across multiple sessions, session bookmarking, and pause/resume of pipeline.
+- Smart folders / continuous watchers, cloud integrations, and semantic search.
+- Extended audit dashboards beyond per-run summaries.
+
+
+
 ## Feature Scope
 ### Must Have Enhancements
 - Profile persistence storing user rules, ignore paths, naming conventions, and confidence thresholds (encrypted at rest).
@@ -119,6 +132,9 @@ load_preferences -> scan_roots -> extract -> constella_cluster -> generate_visua
 - Session pause/resume preserves full plan state and logs without corruption.
 
 ## Risks & Mitigations
+- **LLM Latency**: Cache intermediate summaries; expose progress indicators to avoid perceived hangs.
+- **Misclassification**: Require explicit approval; surface rationale and confidence thresholds.
+- **Permissions**: Request elevated permissions only when required; document setup in onboarding flow.
 - **Local Model Drift**: Provide compatibility checks and recommended model list; fallback to remote providers.
 - **Visualization Overhead**: Generate thumbnails asynchronously and stream to UI once ready.
 - **Preference Conflicts**: Detect contradictory rules and prompt user to resolve before plan generation.

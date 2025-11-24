@@ -16,7 +16,7 @@
   - Do not read or modify `agentic_development_docs/used_prompts/`; those prompts are finalized and out of scope.
   - When documentation is needed for a package, library, or framework, consult Context7.
      - The documentation for Tauri, the frontend interface, is given here:
-        - https://tauri.app/llms-full.txt
+        - https://tauri.app/llms.txt
         - https://tauri.app/llms-full.txt
         - https://tauri.app/start/
     - The documentation for Agno, the agentic development framework is given here:
@@ -25,6 +25,10 @@
     - The project repository folder path for Constella, library for auto-clustering, auto-grouping library, which is project folder path available in the local file system, is given here:
         - `/Users/sreenivasanac/SoftwareProjects/constella`
   - Web search tool is also available to use when appropriate and necessary.
+The documentation for LiteLLM (developed by BerriAI) - you can get using Context7 MCP server, or using web search tool, this is the link:
+- https://docs.litellm.ai/llms-full.txt
+- https://docs.litellm.ai/llms.txt
+
 
 - ** Running system code instructions **
   - Use uv when running commands related to python (python script, pytest etc), or installing libraries using pip. Do not run python or python3 command directly. or pip command directly.

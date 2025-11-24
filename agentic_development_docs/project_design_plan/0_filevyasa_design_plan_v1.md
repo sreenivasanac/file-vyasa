@@ -3,7 +3,7 @@
 ## Overall Product Goal (V1 Series)
 Deliver a trustworthy, human-in-the-loop desktop assistant that scans a user-selected directory, understands file contents at a high level, and produces an approval-ready re-organization plan without performing any irreversible actions.
 
-Primary scope for V1.x: single-folder triage on macOS with basic planning UI and safe execution. Advanced personalisation, caching, heavy optimisation, and smart modes are deferred to V2+ (see `0_filevyasa_design_plan_v2.md`).
+Primary scope for V1. x: single-folder triage on macOS with basic planning UI and safe execution. Advanced personalisation, caching, heavy optimisation, and smart modes are deferred to V2+ (see `0_filevyasa_design_plan_v2.md`).
 
 ---
 
@@ -18,6 +18,7 @@ Allow the user to select a single folder, run basic content-aware extraction for
 - For each supported file:
   - Convert to Markdown using `markitdown` where possible.
   - Fill an internal file object with relevant attributes and metadata.
+  - For sample of file object class to take inspiration from (another project): /Users/sreenivasanac/SoftwareProjects/brahmasumm2/core/document/base.py
   - Read only the first 50 lines of the Markdown.
   - Call BYOK remote LLM via LiteLLM (OpenAI-compatible endpoint) with filename + file metadata + snfile content snippet to produce:
     - `ai_brief_summary` (≈2 lines).

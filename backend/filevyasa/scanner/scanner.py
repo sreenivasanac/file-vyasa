@@ -124,18 +124,18 @@ class Scanner:
     def __init__(
         self,
         ignore_patterns: List[str] | None = None,
-        scan_id: str | None = None
+        folder_id: str | None = None
     ):
         """
         Initialize the scanner.
         
         Args:
             ignore_patterns: Patterns to ignore (defaults to config patterns)
-            scan_id: Optional scan session ID
+            folder_id: Optional folder ID for associating scanned files
         """
         patterns = ignore_patterns or settings.default_ignore_patterns
         self.file_filter = FileFilter(patterns)
-        self.scan_id = scan_id or str(uuid4())
+        self.folder_id = folder_id or str(uuid4())
     
     def scan_directory(
         self,
@@ -204,7 +204,7 @@ class Scanner:
         
         return FileObject(
             id=str(uuid4()),
-            scan_id=self.scan_id,
+            folder_id=self.folder_id,
             path=str(file_path),
             filename=file_path.name,
             extension=extension,

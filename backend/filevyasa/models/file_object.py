@@ -54,7 +54,7 @@ class FileObject(FileObjectBase):
     """Full FileObject with database fields."""
     
     id: str = Field(default_factory=lambda: str(uuid4()), description="Unique identifier")
-    scan_id: Optional[str] = Field(default=None, description="ID of the scan session")
+    folder_id: Optional[str] = Field(default=None, description="ID of the monitored folder")
     
     # Content hash for duplicate detection (v1.5)
     content_hash: Optional[str] = Field(default=None, description="SHA-256 hash of file content")

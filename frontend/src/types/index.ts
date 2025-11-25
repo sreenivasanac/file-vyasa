@@ -12,7 +12,7 @@ export type FileCategory =
 
 export type ExtractionStatus = 'pending' | 'success' | 'failed' | 'skipped';
 
-export type ScanStatus = 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled';
+export type FolderStatus = 'idle' | 'syncing' | 'cancelled' | 'error';
 
 export interface FileObject {
   id: string;
@@ -40,31 +40,30 @@ export interface FileObject {
   summarized_at: string | null;
 }
 
-export interface ScanRequest {
+// Monitored Folder types
+export interface MonitoredFolder {
+  id: string;
   root_path: string;
-  recursive: boolean;
-  ignore_patterns?: string[];
+  name: string;
+  status: FolderStatus;
+  last_synced_at: string | null;
+  last_llm_model: string | null;
+  total_files: number;
+  processed_files: number;
+  failed_files: number;
   generate_summaries: boolean;
+  ignore_patterns: string[];
+  created_at: string;
 }
 
-export interface ScanResponse {
-  scan_id: string;
+export interface FolderCreateRequest {
   root_path: string;
-  status: ScanStatus;
-  total_files: number;
-  processed_files: number;
-  failed_files: number;
-  started_at: string;
-  completed_at: string | null;
+  generate_summaries: boolean;
+  ignore_patterns?: string[];
 }
 
-export interface ScanStatusResponse {
-  scan_id: string;
-  status: ScanStatus;
-  total_files: number;
-  processed_files: number;
-  failed_files: number;
-  files: FileObject[];
+export interface FolderSyncRequest {
+  generate_summaries?: boolean;
 }
 
 export interface FileListResponse {

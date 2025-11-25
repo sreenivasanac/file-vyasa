@@ -66,15 +66,18 @@ Once running, visit:
 
 ## API Endpoints
 
-### Scan Operations
+### Folder Operations
 
-- `POST /api/scan/start` - Start scanning a directory
-- `GET /api/scan/{scan_id}/status` - Get scan status and results
-- `GET /api/scan/recent` - List recent scans
+- `POST /api/folders` - Add a folder to monitor (auto-syncs)
+- `GET /api/folders` - List all monitored folders
+- `GET /api/folders/{id}` - Get folder details
+- `DELETE /api/folders/{id}` - Remove folder from monitoring
+- `POST /api/folders/{id}/sync` - Sync folder (detect changes)
+- `POST /api/folders/{id}/cancel` - Cancel ongoing sync
 
 ### File Operations
 
-- `GET /api/files/` - List files with filtering
+- `GET /api/files/` - List files with filtering (use `folder_id` param)
 - `GET /api/files/{file_id}` - Get file details
 - `GET /api/files/categories/stats` - Get category statistics
 - `GET /api/files/extensions/stats` - Get extension statistics

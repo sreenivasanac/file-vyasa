@@ -18,14 +18,13 @@ class FileCategory(str, Enum):
     OTHER = "other"             # Unknown/unclassified
 
 
-class ScanStatus(str, Enum):
-    """Status of a scan operation."""
+class FolderStatus(str, Enum):
+    """Status of a monitored folder's sync operation."""
     
-    PENDING = "pending"
-    IN_PROGRESS = "in_progress"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
+    IDLE = "idle"              # Not currently syncing
+    SYNCING = "syncing"        # Sync in progress
+    CANCELLED = "cancelled"    # Sync was cancelled
+    ERROR = "error"            # Sync failed with error
 
 
 class ActionType(str, Enum):

@@ -38,8 +38,8 @@ def create_app() -> FastAPI:
     )
     
     # Register routers
-    from filevyasa.api.routes import scan, files, config
-    app.include_router(scan.router, prefix="/api/scan", tags=["scan"])
+    from filevyasa.api.routes import folders, files, config
+    app.include_router(folders.router, prefix="/api/folders", tags=["folders"])
     app.include_router(files.router, prefix="/api/files", tags=["files"])
     app.include_router(config.router, prefix="/api/config", tags=["config"])
     

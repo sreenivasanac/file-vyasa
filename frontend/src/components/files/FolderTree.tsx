@@ -27,7 +27,7 @@ interface FolderTreeProps {
   rootPath: string;
   selectedFileId: string | null;
   onSelectFile: (fileId: string | null) => void;
-  isScanning: boolean;
+  isSyncing: boolean;
 }
 
 function buildTree(files: FileObject[], rootPath: string): TreeNode {
@@ -107,7 +107,7 @@ export function FolderTree({
   rootPath,
   selectedFileId,
   onSelectFile,
-  isScanning,
+  isSyncing,
 }: FolderTreeProps) {
   const tree = useMemo(() => buildTree(files, rootPath), [files, rootPath]);
 
@@ -118,7 +118,7 @@ export function FolderTree({
         depth={0}
         selectedFileId={selectedFileId}
         onSelectFile={onSelectFile}
-        isScanning={isScanning}
+        isSyncing={isSyncing}
         defaultExpanded
       />
     </div>
@@ -130,7 +130,7 @@ interface TreeNodeComponentProps {
   depth: number;
   selectedFileId: string | null;
   onSelectFile: (fileId: string | null) => void;
-  isScanning: boolean;
+  isSyncing: boolean;
   defaultExpanded?: boolean;
 }
 
@@ -139,13 +139,13 @@ function TreeNodeComponent({
   depth,
   selectedFileId,
   onSelectFile,
-  isScanning,
+  isSyncing,
   defaultExpanded = false,
 }: TreeNodeComponentProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
   const isCompleted = node.fileCount > 0 && node.completedCount === node.fileCount;
-  const isProcessing = isScanning && node.completedCount < node.fileCount;
+  const isProcessing = isSyncing && node.completedCount < node.fileCount;
   const isSelected = node.file?.id === selectedFileId;
 
   // Sort children: folders first, then files, alphabetically
@@ -196,7 +196,7 @@ function TreeNodeComponent({
                 depth={depth + 1}
                 selectedFileId={selectedFileId}
                 onSelectFile={onSelectFile}
-                isScanning={isScanning}
+                isSyncing={isSyncing}
               />
             ))}
           </div>
@@ -223,7 +223,7 @@ function TreeNodeComponent({
       <span className="flex-1 truncate" title={node.name}>
         {node.name}
       </span>
-      <FileStatusIndicator file={node.file!} isScanning={isScanning} />
+      <FileStatusIndicator file={node.file!} isSyncing={isSyncing} />
     </div>
   );
 }
@@ -259,10 +259,10 @@ function StatusIndicator({
 
 function FileStatusIndicator({
   file,
-  isScanning,
+  isSyncing,
 }: {
   file: FileObject;
-  isScanning: boolean;
+  isSyncing: boolean;
 }) {
   const hasAISummary = !!file.ai_brief_summary;
 
@@ -270,7 +270,7 @@ function FileStatusIndicator({
     return <CheckCircle className="h-3.5 w-3.5 text-success" />;
   }
 
-  if (isScanning) {
+  if (isSyncing) {
     return <Loader className="h-3.5 w-3.5 animate-spin text-accent" />;
   }
 

@@ -57,6 +57,6 @@ export function formatDate(dateString: string | null): string {
 export function truncatePath(path: string, maxLength = 50): string {
   if (path.length <= maxLength) return path;
   const parts = path.split('/');
-  if (parts.length <= 3) return path;
-  return `.../${parts.slice(-2).join('/')}`;
+  if (parts.length <= 5) return path;
+  return `.../${parts.slice(-4).join('/')}`;
 }

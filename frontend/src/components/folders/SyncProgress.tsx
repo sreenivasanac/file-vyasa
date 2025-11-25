@@ -1,20 +1,21 @@
 import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Cpu, Square } from 'lucide-react';
 import { Spinner } from '@/components/common/Spinner';
 import { Button } from '@/components/common/Button';
 import { useAppStore } from '@/stores/appStore';
 import { api } from '@/api/client';
 
-export function ScanProgress() {
+export function SyncProgress() {
   const {
-    currentScanId,
-    isScanning,
-    scanProgress,
-    setScanProgress,
-    setIsScanning,
+    currentFolderId,
+    isSyncing,
+    syncProgress,
+    setSyncProgress,
+    setIsSyncing,
   } = useAppStore();
 
+  const queryClient = useQueryClient();
   const [isCancelling, setIsCancelling] = useState(false);
 
   // Fetch current LLM config to show model being used
@@ -24,45 +25,48 @@ export function ScanProgress() {
   });
 
   useEffect(() => {
-    if (!currentScanId || !isScanning) return;
+    if (!currentFolderId || !isSyncing) return;
 
     const pollInterval = setInterval(async () => {
       try {
-        const status = await api.scan.status(currentScanId, false);
-        setScanProgress({
-          total: status.total_files,
-          processed: status.processed_files,
-          failed: status.failed_files,
+        const folder = await api.folders.get(currentFolderId);
+        setSyncProgress({
+          total: folder.total_files,
+          processed: folder.processed_files,
+          failed: folder.failed_files,
         });
 
-        if (status.status === 'completed' || status.status === 'failed' || status.status === 'cancelled') {
-          setIsScanning(false);
+        if (folder.status === 'idle' || folder.status === 'error' || folder.status === 'cancelled') {
+          setIsSyncing(false);
           setIsCancelling(false);
+          // Refresh folders list and files
+          queryClient.invalidateQueries({ queryKey: ['folders'] });
+          queryClient.invalidateQueries({ queryKey: ['files'] });
         }
       } catch (err) {
-        console.error('Failed to poll scan status:', err);
+        console.error('Failed to poll folder status:', err);
       }
     }, 1000);
 
     return () => clearInterval(pollInterval);
-  }, [currentScanId, isScanning, setScanProgress, setIsScanning]);
+  }, [currentFolderId, isSyncing, setSyncProgress, setIsSyncing, queryClient]);
 
   const handleCancel = async () => {
-    if (!currentScanId || isCancelling) return;
+    if (!currentFolderId || isCancelling) return;
     setIsCancelling(true);
     try {
-      await api.scan.cancel(currentScanId);
+      await api.folders.cancel(currentFolderId);
     } catch (err) {
-      console.error('Failed to cancel scan:', err);
+      console.error('Failed to cancel sync:', err);
       setIsCancelling(false);
     }
   };
 
-  if (!isScanning) return null;
+  if (!isSyncing) return null;
 
   const progress =
-    scanProgress.total > 0
-      ? Math.round((scanProgress.processed / scanProgress.total) * 100)
+    syncProgress.total > 0
+      ? Math.round((syncProgress.processed / syncProgress.total) * 100)
       : 0;
 
   return (
@@ -71,7 +75,7 @@ export function ScanProgress() {
         <div className="flex items-center gap-3">
           <Spinner size="sm" className="text-accent" />
           <span className="text-sm font-medium text-text-primary">
-            {isCancelling ? 'Stopping scan...' : 'Scanning files...'}
+            {isCancelling ? 'Stopping sync...' : 'Syncing files...'}
           </span>
         </div>
         <div className="flex items-center gap-3">
@@ -103,10 +107,10 @@ export function ScanProgress() {
 
       <div className="flex justify-between text-xs text-text-muted">
         <span>
-          {scanProgress.processed} / {scanProgress.total} files processed
+          {syncProgress.processed} / {syncProgress.total} files processed
         </span>
-        {scanProgress.failed > 0 && (
-          <span className="text-error">{scanProgress.failed} failed</span>
+        {syncProgress.failed > 0 && (
+          <span className="text-error">{syncProgress.failed} failed</span>
         )}
         <span>{progress}%</span>
       </div>

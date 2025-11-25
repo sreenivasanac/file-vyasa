@@ -5,11 +5,11 @@ import type {
   FileCategory,
   FileListResponse,
   FileObject,
+  FolderCreateRequest,
+  FolderSyncRequest,
   LLMConfig,
   LLMConfigUpdate,
-  ScanRequest,
-  ScanResponse,
-  ScanStatusResponse,
+  MonitoredFolder,
 } from '@/types';
 
 const API_BASE = 'http://127.0.0.1:8000/api';
@@ -49,31 +49,36 @@ export const api = {
   // Health check
   health: () => fetch(`${API_BASE.replace('/api', '')}/health`).then((r) => r.json()),
 
-  // Scan endpoints
-  scan: {
-    start: (data: ScanRequest): Promise<ScanResponse> =>
-      request('/scan/start', {
+  // Folder endpoints
+  folders: {
+    add: (data: FolderCreateRequest): Promise<MonitoredFolder> =>
+      request('/folders', {
         method: 'POST',
         body: JSON.stringify(data),
       }),
 
-    status: (
-      scanId: string,
-      includeFiles = false
-    ): Promise<ScanStatusResponse> =>
-      request(`/scan/${scanId}/status?include_files=${includeFiles}`),
+    list: (): Promise<MonitoredFolder[]> => request('/folders'),
 
-    recent: (limit = 10): Promise<ScanResponse[]> =>
-      request(`/scan/recent?limit=${limit}`),
+    get: (folderId: string): Promise<MonitoredFolder> =>
+      request(`/folders/${folderId}`),
 
-    cancel: (scanId: string): Promise<{ scan_id: string; status: string }> =>
-      request(`/scan/${scanId}/cancel`, { method: 'POST' }),
+    delete: (folderId: string): Promise<{ message: string; folder_id: string }> =>
+      request(`/folders/${folderId}`, { method: 'DELETE' }),
+
+    sync: (folderId: string, data?: FolderSyncRequest): Promise<MonitoredFolder> =>
+      request(`/folders/${folderId}/sync`, {
+        method: 'POST',
+        body: data ? JSON.stringify(data) : undefined,
+      }),
+
+    cancel: (folderId: string): Promise<{ folder_id: string; status: string }> =>
+      request(`/folders/${folderId}/cancel`, { method: 'POST' }),
   },
 
   // File endpoints
   files: {
     list: (params: {
-      scan_id?: string;
+      folder_id?: string;
       category?: FileCategory;
       extension?: string;
       search?: string;
@@ -81,7 +86,7 @@ export const api = {
       page_size?: number;
     }): Promise<FileListResponse> => {
       const searchParams = new URLSearchParams();
-      if (params.scan_id) searchParams.set('scan_id', params.scan_id);
+      if (params.folder_id) searchParams.set('folder_id', params.folder_id);
       if (params.category) searchParams.set('category', params.category);
       if (params.extension) searchParams.set('extension', params.extension);
       if (params.search) searchParams.set('search', params.search);
@@ -93,17 +98,17 @@ export const api = {
 
     get: (fileId: string): Promise<FileObject> => request(`/files/${fileId}`),
 
-    categoryStats: (scanId?: string): Promise<CategoryStats> => {
-      const params = scanId ? `?scan_id=${scanId}` : '';
+    categoryStats: (folderId?: string): Promise<CategoryStats> => {
+      const params = folderId ? `?folder_id=${folderId}` : '';
       return request(`/files/categories/stats${params}`);
     },
 
     extensionStats: (
-      scanId?: string,
+      folderId?: string,
       limit = 20
     ): Promise<ExtensionStats[]> => {
       const params = new URLSearchParams();
-      if (scanId) params.set('scan_id', scanId);
+      if (folderId) params.set('folder_id', folderId);
       params.set('limit', limit.toString());
       return request(`/files/extensions/stats?${params}`);
     },

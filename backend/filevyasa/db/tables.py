@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import JSON, Boolean, DateTime, Enum, Integer, String, Text, ForeignKey
+from sqlalchemy import JSON, Boolean, DateTime, Integer, String, Text, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -12,28 +12,39 @@ class Base(DeclarativeBase):
     pass
 
 
-class ScanSessionTable(Base):
-    """Table for tracking scan sessions."""
+class MonitoredFolderTable(Base):
+    """Table for tracking monitored folders.
     
-    __tablename__ = "scan_sessions"
+    Each folder can only be added once (unique root_path).
+    Files belong to folders, not scans.
+    """
+    
+    __tablename__ = "monitored_folders"
     
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    root_path: Mapped[str] = mapped_column(String(1024), nullable=False)
-    status: Mapped[str] = mapped_column(String(20), default="pending")
+    root_path: Mapped[str] = mapped_column(String(1024), nullable=False, unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(256), nullable=False)  # Display name (folder basename)
     
+    # Sync state
+    status: Mapped[str] = mapped_column(String(20), default="idle")  # idle, syncing, cancelled, error
+    last_synced_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    last_llm_model: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    
+    # Stats
     total_files: Mapped[int] = mapped_column(Integer, default=0)
     processed_files: Mapped[int] = mapped_column(Integer, default=0)
     failed_files: Mapped[int] = mapped_column(Integer, default=0)
     
-    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
-    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    
-    # Config used for scan
+    # Settings per folder
+    generate_summaries: Mapped[bool] = mapped_column(Boolean, default=True)
     ignore_patterns: Mapped[dict] = mapped_column(JSON, default=list)
+    
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     
     # Relationship to files
     files: Mapped[list["FileObjectTable"]] = relationship(
-        "FileObjectTable", back_populates="scan_session", cascade="all, delete-orphan"
+        "FileObjectTable", back_populates="folder", cascade="all, delete-orphan"
     )
 
 
@@ -43,8 +54,8 @@ class FileObjectTable(Base):
     __tablename__ = "file_objects"
     
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    scan_id: Mapped[Optional[str]] = mapped_column(
-        String(36), ForeignKey("scan_sessions.id"), nullable=True
+    folder_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("monitored_folders.id"), nullable=True
     )
     
     # File identification
@@ -86,7 +97,7 @@ class FileObjectTable(Base):
     scanned_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     summarized_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     
-    # Relationship to scan session
-    scan_session: Mapped[Optional["ScanSessionTable"]] = relationship(
-        "ScanSessionTable", back_populates="files"
+    # Relationship to folder
+    folder: Mapped[Optional["MonitoredFolderTable"]] = relationship(
+        "MonitoredFolderTable", back_populates="files"
     )

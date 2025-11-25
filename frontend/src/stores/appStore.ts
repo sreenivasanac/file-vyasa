@@ -1,25 +1,25 @@
 import { create } from 'zustand';
-import type { FileObject, ScanResponse } from '@/types';
+import type { FileObject, MonitoredFolder } from '@/types';
 
-type View = 'scan' | 'files' | 'recent' | 'settings';
+type View = 'add-folder' | 'folders' | 'files' | 'settings';
 
 interface AppState {
   // Navigation
   currentView: View;
   setCurrentView: (view: View) => void;
 
-  // Scan state
-  currentScanId: string | null;
-  currentScanPath: string | null;
-  isScanning: boolean;
-  scanProgress: {
+  // Folder state
+  currentFolderId: string | null;
+  currentFolderPath: string | null;
+  isSyncing: boolean;
+  syncProgress: {
     total: number;
     processed: number;
     failed: number;
   };
-  setCurrentScan: (scanId: string | null, path: string | null) => void;
-  setIsScanning: (isScanning: boolean) => void;
-  setScanProgress: (progress: { total: number; processed: number; failed: number }) => void;
+  setCurrentFolder: (folderId: string | null, path: string | null) => void;
+  setIsSyncing: (isSyncing: boolean) => void;
+  setSyncProgress: (progress: { total: number; processed: number; failed: number }) => void;
 
   // Files state
   selectedFileId: string | null;
@@ -27,9 +27,9 @@ interface AppState {
   selectedFile: FileObject | null;
   setSelectedFile: (file: FileObject | null) => void;
 
-  // Recent scans
-  recentScans: ScanResponse[];
-  setRecentScans: (scans: ScanResponse[]) => void;
+  // Folders list
+  folders: MonitoredFolder[];
+  setFolders: (folders: MonitoredFolder[]) => void;
 
   // Backend status
   backendConnected: boolean;
@@ -38,18 +38,18 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set) => ({
   // Navigation
-  currentView: 'scan',
+  currentView: 'folders',
   setCurrentView: (view) => set({ currentView: view }),
 
-  // Scan state
-  currentScanId: null,
-  currentScanPath: null,
-  isScanning: false,
-  scanProgress: { total: 0, processed: 0, failed: 0 },
-  setCurrentScan: (scanId, path) =>
-    set({ currentScanId: scanId, currentScanPath: path }),
-  setIsScanning: (isScanning) => set({ isScanning }),
-  setScanProgress: (progress) => set({ scanProgress: progress }),
+  // Folder state
+  currentFolderId: null,
+  currentFolderPath: null,
+  isSyncing: false,
+  syncProgress: { total: 0, processed: 0, failed: 0 },
+  setCurrentFolder: (folderId, path) =>
+    set({ currentFolderId: folderId, currentFolderPath: path }),
+  setIsSyncing: (isSyncing) => set({ isSyncing }),
+  setSyncProgress: (progress) => set({ syncProgress: progress }),
 
   // Files state
   selectedFileId: null,
@@ -57,9 +57,9 @@ export const useAppStore = create<AppState>((set) => ({
   selectedFile: null,
   setSelectedFile: (file) => set({ selectedFile: file }),
 
-  // Recent scans
-  recentScans: [],
-  setRecentScans: (scans) => set({ recentScans: scans }),
+  // Folders list
+  folders: [],
+  setFolders: (folders) => set({ folders }),
 
   // Backend status
   backendConnected: false,

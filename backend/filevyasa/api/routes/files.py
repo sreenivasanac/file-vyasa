@@ -62,7 +62,7 @@ def _format_size(size_bytes: int) -> str:
 
 @router.get("/", response_model=FileListResponse)
 async def list_files(
-    scan_id: Optional[str] = Query(None, description="Filter by scan ID"),
+    folder_id: Optional[str] = Query(None, description="Filter by folder ID"),
     category: Optional[FileCategory] = Query(None, description="Filter by file category"),
     extension: Optional[str] = Query(None, description="Filter by extension"),
     search: Optional[str] = Query(None, description="Search in filename"),
@@ -75,8 +75,8 @@ async def list_files(
     query = session.query(FileObjectTable)
     
     # Apply filters
-    if scan_id:
-        query = query.filter(FileObjectTable.scan_id == scan_id)
+    if folder_id:
+        query = query.filter(FileObjectTable.folder_id == folder_id)
     if category:
         query = query.filter(FileObjectTable.category == category.value)
     if extension:
@@ -162,7 +162,7 @@ async def get_file(file_id: str):
 
 
 @router.get("/categories/stats")
-async def get_category_stats(scan_id: Optional[str] = None):
+async def get_category_stats(folder_id: Optional[str] = None):
     """Get statistics by file category."""
     session = get_session()
     
@@ -174,8 +174,8 @@ async def get_category_stats(scan_id: Optional[str] = None):
         func.sum(FileObjectTable.size_bytes).label("total_size"),
     ).group_by(FileObjectTable.category)
     
-    if scan_id:
-        query = query.filter(FileObjectTable.scan_id == scan_id)
+    if folder_id:
+        query = query.filter(FileObjectTable.folder_id == folder_id)
     
     results = query.all()
     
@@ -192,7 +192,7 @@ async def get_category_stats(scan_id: Optional[str] = None):
 
 
 @router.get("/extensions/stats")
-async def get_extension_stats(scan_id: Optional[str] = None, limit: int = 20):
+async def get_extension_stats(folder_id: Optional[str] = None, limit: int = 20):
     """Get statistics by file extension."""
     session = get_session()
     
@@ -205,8 +205,8 @@ async def get_extension_stats(scan_id: Optional[str] = None, limit: int = 20):
         func.count(FileObjectTable.id).desc()
     ).limit(limit)
     
-    if scan_id:
-        query = query.filter(FileObjectTable.scan_id == scan_id)
+    if folder_id:
+        query = query.filter(FileObjectTable.folder_id == folder_id)
     
     results = query.all()
     

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { openPath } from '@tauri-apps/plugin-opener';
-import { X, ExternalLink, Calendar, HardDrive, FileType, Lock } from 'lucide-react';
+import { X, ExternalLink, Calendar, HardDrive, FileType, Lock, Cpu } from 'lucide-react';
 import { api } from '@/api/client';
 import { useAppStore } from '@/stores/appStore';
 import { FileIcon } from './FileIcon';
@@ -105,6 +105,12 @@ export function FileDetail() {
               )}
               {file.ai_summary && (
                 <p className="text-sm text-text-muted">{file.ai_summary}</p>
+              )}
+              {file.llm_model && (
+                <div className="mt-3 flex items-center gap-1.5 text-xs text-text-muted">
+                  <Cpu className="h-3 w-3" />
+                  <span>Model: {file.llm_model}</span>
+                </div>
               )}
             </Section>
           )}

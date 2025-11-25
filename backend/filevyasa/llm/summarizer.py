@@ -44,6 +44,7 @@ class Summarizer:
     
     def __init__(
         self,
+        provider: str | None = None,
         model: str | None = None,
         api_key: str | None = None,
         api_base: str | None = None
@@ -52,15 +53,41 @@ class Summarizer:
         Initialize the summarizer.
         
         Args:
+            provider: LLM provider (ollama, openai, anthropic, etc.)
             model: LLM model name (default from settings)
             api_key: API key (default from settings)
             api_base: Custom API base URL (default from settings)
         """
+        self.provider = provider or settings.llm_provider
         self.model = model or settings.llm_model
         self.api_key = api_key or settings.llm_api_key
         self.api_base = api_base or settings.llm_api_base
         
         self._litellm = None
+    
+    def _get_model_name(self) -> str:
+        """Get the model name formatted for LiteLLM based on provider.
+        
+        LiteLLM uses provider prefixes to route requests. See:
+        https://docs.litellm.ai/docs/providers
+        """
+        # Providers that need prefix for LiteLLM routing
+        PREFIXED_PROVIDERS = {
+            "ollama": "ollama/",
+            "anthropic": "anthropic/",
+            "gemini": "gemini/",
+            "groq": "groq/",
+            "deepseek": "deepseek/",
+            "together_ai": "together_ai/",
+            "fireworks_ai": "fireworks_ai/",
+        }
+        
+        prefix = PREFIXED_PROVIDERS.get(self.provider, "")
+        if prefix and not self.model.startswith(prefix):
+            return f"{prefix}{self.model}"
+        
+        # OpenAI models don't need prefix
+        return self.model
     
     def _get_litellm(self):
         """Lazy load litellm."""
@@ -99,17 +126,24 @@ class Summarizer:
         )
         
         try:
+            # Get properly formatted model name for LiteLLM
+            model_name = self._get_model_name()
+            
             # Build completion kwargs
             kwargs = {
-                "model": self.model,
+                "model": model_name,
                 "messages": [
-                    {"role": "system", "content": "You are a helpful file organization assistant."},
+                    {"role": "system", "content": "You are a helpful file organization assistant. Always respond with valid JSON."},
                     {"role": "user", "content": prompt}
                 ],
                 "temperature": 0.3,
                 "max_tokens": 500,
-                "response_format": {"type": "json_object"}
             }
+            
+            # Only add response_format for providers that support it (OpenAI, etc.)
+            # Ollama and some other providers don't support structured JSON output mode
+            if self.provider in ("openai", "azure"):
+                kwargs["response_format"] = {"type": "json_object"}
             
             if self.api_base:
                 kwargs["api_base"] = self.api_base
@@ -122,6 +156,7 @@ class Summarizer:
             
             file_obj.ai_brief_summary = result.get("brief_summary", "")
             file_obj.ai_summary = result.get("detailed_summary", "")
+            file_obj.llm_model = model_name  # Store which model was used
             file_obj.summarized_at = datetime.now()
             
             logger.info("file_summarized", filename=file_obj.filename)
@@ -134,16 +169,57 @@ class Summarizer:
         return file_obj
     
     def _parse_response(self, content: str) -> dict:
-        """Parse JSON response from LLM."""
+        """Parse JSON response from LLM.
+        
+        Handles various response formats:
+        - Clean JSON
+        - JSON wrapped in markdown code blocks
+        - Regex extraction as fallback
+        """
         import json
+        import re
+        
+        # Try direct JSON parsing first
         try:
             return json.loads(content)
         except json.JSONDecodeError:
-            # Try to extract from text if JSON parsing fails
+            pass
+        
+        # Try to extract JSON from markdown code blocks
+        json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', content, re.DOTALL)
+        if json_match:
+            try:
+                return json.loads(json_match.group(1))
+            except json.JSONDecodeError:
+                pass
+        
+        # Try to find JSON object in the text
+        json_match = re.search(r'\{[^{}]*"brief_summary"[^{}]*\}', content, re.DOTALL)
+        if json_match:
+            try:
+                return json.loads(json_match.group(0))
+            except json.JSONDecodeError:
+                pass
+        
+        # Try regex extraction of values
+        brief_match = re.search(r'"brief_summary"\s*:\s*"([^"]*)"', content)
+        detailed_match = re.search(r'"detailed_summary"\s*:\s*"([^"]*)"', content)
+        
+        if brief_match or detailed_match:
             return {
-                "brief_summary": content[:200],
-                "detailed_summary": content[:400]
+                "brief_summary": brief_match.group(1) if brief_match else "",
+                "detailed_summary": detailed_match.group(1) if detailed_match else ""
             }
+        
+        # Last resort: treat the whole content as a summary (cleaned)
+        # Remove any JSON-like formatting
+        cleaned = re.sub(r'[{}":]', '', content).strip()
+        lines = [l.strip() for l in cleaned.split('\n') if l.strip()]
+        
+        return {
+            "brief_summary": lines[0] if lines else content[:100],
+            "detailed_summary": ' '.join(lines[:3]) if lines else content[:200]
+        }
 
 
 def summarize_file(

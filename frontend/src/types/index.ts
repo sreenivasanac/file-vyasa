@@ -30,6 +30,7 @@ export interface FileObject {
   parent_dir: string;
   ai_brief_summary: string;
   ai_summary: string;
+  llm_model: string | null;
   exif_data: Record<string, unknown>;
   metadata: Record<string, unknown>;
   extraction_status: ExtractionStatus;

@@ -37,6 +37,7 @@ class FileObjectBase(BaseModel):
     # AI-generated fields (v1.1)
     ai_brief_summary: str = Field(default="", description="AI-generated brief summary (~2 lines)")
     ai_summary: str = Field(default="", description="AI-generated detailed summary (~4 lines)")
+    llm_model: Optional[str] = Field(default=None, description="LLM model used for summarization (e.g., 'ollama/llama3.2')")
     
     # Extraction status
     extraction_status: ExtractionStatus = Field(default=ExtractionStatus.PENDING, description="Content extraction status")
@@ -101,6 +102,7 @@ class FileObjectResponse(BaseModel):
     
     ai_brief_summary: str
     ai_summary: str
+    llm_model: Optional[str]
     
     exif_data: dict[str, Any]
     metadata: dict[str, Any]

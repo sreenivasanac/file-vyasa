@@ -100,6 +100,7 @@ def _run_scan(
                     # Use content_preview as summary directly, skip LLM
                     file_obj.ai_brief_summary = file_obj.content_preview
                     file_obj.ai_summary = file_obj.content_preview
+                    file_obj.llm_model = None  # No LLM used for non-content files
                     file_obj.summarized_at = datetime.now()
                 elif summarizer and file_obj.content_preview:
                     # Generate LLM summary for content files
@@ -124,6 +125,7 @@ def _run_scan(
                     file_metadata=file_obj.metadata,
                     ai_brief_summary=file_obj.ai_brief_summary,
                     ai_summary=file_obj.ai_summary,
+                    llm_model=getattr(file_obj, 'llm_model', None),
                     extraction_status=getattr(file_obj, 'extraction_status', 'pending').value if hasattr(getattr(file_obj, 'extraction_status', None), 'value') else str(getattr(file_obj, 'extraction_status', 'pending')),
                     extraction_error=getattr(file_obj, 'extraction_error', None),
                     is_password_protected=getattr(file_obj, 'is_password_protected', False),
@@ -241,6 +243,7 @@ async def get_scan_status(scan_id: str, include_files: bool = False):
                 parent_dir=str(f.path).rsplit("/", 1)[0] if "/" in f.path else "",
                 ai_brief_summary=f.ai_brief_summary,
                 ai_summary=f.ai_summary,
+                llm_model=getattr(f, 'llm_model', None),
                 exif_data=f.exif_data or {},
                 metadata=f.file_metadata or {},
                 extraction_status=getattr(f, 'extraction_status', 'pending'),

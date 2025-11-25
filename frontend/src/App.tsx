@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout } from '@/components/layout/Layout';
-import { FolderPicker } from '@/components/scan/FolderPicker';
-import { RecentScans } from '@/components/scan/RecentScans';
+import { AddFolder } from '@/components/folders/AddFolder';
+import { FolderList } from '@/components/folders/FolderList';
 import { FileList } from '@/components/files/FileList';
 import { FileDetail } from '@/components/files/FileDetail';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
@@ -32,14 +32,16 @@ function AppContent() {
     };
 
     checkBackend();
-    const interval = setInterval(checkBackend, 5000);
+    const interval = setInterval(checkBackend, 30000);
     return () => clearInterval(interval);
   }, [setBackendConnected]);
 
   const renderContent = () => {
     switch (currentView) {
-      case 'scan':
-        return <FolderPicker />;
+      case 'add-folder':
+        return <AddFolder />;
+      case 'folders':
+        return <FolderList />;
       case 'files':
         return (
           <div className="flex h-full">
@@ -49,12 +51,10 @@ function AppContent() {
             {selectedFileId && <FileDetail />}
           </div>
         );
-      case 'recent':
-        return <RecentScans />;
       case 'settings':
         return <SettingsPanel />;
       default:
-        return <FolderPicker />;
+        return <FolderList />;
     }
   };
 

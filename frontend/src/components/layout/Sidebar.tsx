@@ -1,19 +1,19 @@
 import {
-  FolderSearch,
+  FolderPlus,
+  FolderOpen,
   Files,
-  History,
   Settings,
   CircleDot,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/stores/appStore';
 
-type View = 'scan' | 'files' | 'recent' | 'settings';
+type View = 'add-folder' | 'folders' | 'files' | 'settings';
 
-const navItems: { id: View; label: string; icon: typeof FolderSearch }[] = [
-  { id: 'scan', label: 'Scan', icon: FolderSearch },
-  { id: 'files', label: 'Files', icon: Files },
-  { id: 'recent', label: 'Recent', icon: History },
+const navItems: { id: View; label: string; icon: typeof FolderOpen }[] = [
+  { id: 'add-folder', label: 'Add Folder', icon: FolderPlus },
+  { id: 'folders', label: 'My Folders', icon: FolderOpen },
+  { id: 'files', label: 'Browse', icon: Files },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 

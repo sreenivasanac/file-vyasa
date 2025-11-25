@@ -3,12 +3,12 @@ import { useAppStore } from '@/stores/appStore';
 import { truncatePath } from '@/lib/utils';
 
 export function Header() {
-  const { currentScanPath, currentView } = useAppStore();
+  const { currentFolderPath, currentView } = useAppStore();
 
   const titles: Record<string, string> = {
-    scan: 'Scan Folder',
+    'add-folder': 'Add Folder',
+    folders: 'My Folders',
     files: 'Files',
-    recent: 'Recent Scans',
     settings: 'Settings',
   };
 
@@ -18,10 +18,10 @@ export function Header() {
         <h1 className="text-lg font-semibold text-text-primary">
           {titles[currentView] || 'FileVyasa'}
         </h1>
-        {currentScanPath && currentView === 'files' && (
+        {currentFolderPath && currentView === 'files' && (
           <div className="flex items-center gap-2 rounded-md bg-bg-tertiary px-3 py-1.5 text-sm text-text-secondary">
             <Folder className="h-4 w-4" />
-            <span title={currentScanPath}>{truncatePath(currentScanPath, 40)}</span>
+            <span title={currentFolderPath}>{truncatePath(currentFolderPath, 40)}</span>
           </div>
         )}
       </div>

@@ -1,30 +1,38 @@
 import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { open } from '@tauri-apps/plugin-dialog';
-import { FolderOpen, Play } from 'lucide-react';
+import { FolderOpen, Plus, Settings, Cpu } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 import { useAppStore } from '@/stores/appStore';
 import { api } from '@/api/client';
 
-export function FolderPicker() {
+export function AddFolder() {
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [generateSummaries, setGenerateSummaries] = useState(true);
-  const [isStarting, setIsStarting] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const {
-    setCurrentScan,
-    setIsScanning,
-    setScanProgress,
+    setCurrentFolder,
+    setIsSyncing,
+    setSyncProgress,
     setCurrentView,
     backendConnected,
   } = useAppStore();
+
+  // Fetch current LLM config
+  const { data: config } = useQuery({
+    queryKey: ['config'],
+    queryFn: api.config.get,
+  });
 
   const handleSelectFolder = async () => {
     try {
       const selected = await open({
         directory: true,
         multiple: false,
-        title: 'Select folder to scan',
+        title: 'Select folder to monitor',
       });
 
       if (selected && typeof selected === 'string') {
@@ -37,32 +45,47 @@ export function FolderPicker() {
     }
   };
 
-  const handleStartScan = async () => {
+  const handleAddFolder = async () => {
     if (!selectedPath) return;
 
-    setIsStarting(true);
+    setIsAdding(true);
     setError(null);
 
     try {
-      const response = await api.scan.start({
+      const folder = await api.folders.add({
         root_path: selectedPath,
-        recursive: true,
         generate_summaries: generateSummaries,
       });
 
-      setCurrentScan(response.scan_id, selectedPath);
-      setIsScanning(true);
-      setScanProgress({
-        total: response.total_files,
-        processed: response.processed_files,
-        failed: response.failed_files,
+      // Folder is auto-syncing after add
+      setCurrentFolder(folder.id, folder.root_path);
+      setIsSyncing(true);
+      setSyncProgress({
+        total: folder.total_files,
+        processed: folder.processed_files,
+        failed: folder.failed_files,
       });
+
+      // Invalidate folders list
+      queryClient.invalidateQueries({ queryKey: ['folders'] });
+
+      // Navigate to files view
       setCurrentView('files');
     } catch (err) {
-      console.error('Failed to start scan:', err);
-      setError(err instanceof Error ? err.message : 'Failed to start scan');
+      console.error('Failed to add folder:', err);
+      // Parse error message from API
+      let errorMessage = 'Failed to add folder';
+      if (err instanceof Error) {
+        try {
+          const parsed = JSON.parse(err.message);
+          errorMessage = parsed.detail || err.message;
+        } catch {
+          errorMessage = err.message;
+        }
+      }
+      setError(errorMessage);
     } finally {
-      setIsStarting(false);
+      setIsAdding(false);
     }
   };
 
@@ -70,11 +93,11 @@ export function FolderPicker() {
     <div className="flex h-full flex-col items-center justify-center p-8">
       <div className="w-full max-w-lg rounded-xl border border-border bg-bg-secondary p-8">
         <h2 className="mb-2 text-center text-2xl font-semibold text-text-primary">
-          Select a Folder to Scan
+          Add a Folder to Monitor
         </h2>
         <p className="mb-8 text-center text-sm text-text-secondary">
-          Choose a directory to analyze. FileVyasa will scan all files and
-          generate AI-powered summaries.
+          Choose a directory to monitor. FileVyasa will scan all files and
+          generate AI-powered summaries. You can sync anytime to detect changes.
         </p>
 
         <div
@@ -98,7 +121,7 @@ export function FolderPicker() {
           )}
         </div>
 
-        <div className="mb-6">
+        <div className="mb-6 space-y-2">
           <label className="flex items-center gap-3 text-sm text-text-secondary">
             <input
               type="checkbox"
@@ -108,6 +131,21 @@ export function FolderPicker() {
             />
             Generate AI summaries for files
           </label>
+          {generateSummaries && config && (
+            <div className="ml-7 flex items-center gap-2 text-xs text-text-muted">
+              <Cpu className="h-3 w-3" />
+              <span>
+                Using: <span className="text-text-secondary">{config.llm.provider}/{config.llm.model}</span>
+              </span>
+              <button
+                onClick={() => setCurrentView('settings')}
+                className="ml-1 flex items-center gap-1 text-accent hover:underline"
+              >
+                <Settings className="h-3 w-3" />
+                Change
+              </button>
+            </div>
+          )}
         </div>
 
         {error && (
@@ -117,13 +155,13 @@ export function FolderPicker() {
         )}
 
         <Button
-          onClick={handleStartScan}
-          disabled={!selectedPath || isStarting || !backendConnected}
+          onClick={handleAddFolder}
+          disabled={!selectedPath || isAdding || !backendConnected}
           className="w-full"
           size="lg"
         >
-          <Play className="mr-2 h-5 w-5" />
-          {isStarting ? 'Starting...' : 'Start Scan'}
+          <Plus className="mr-2 h-5 w-5" />
+          {isAdding ? 'Adding...' : 'Add Folder'}
         </Button>
 
         {!backendConnected && (

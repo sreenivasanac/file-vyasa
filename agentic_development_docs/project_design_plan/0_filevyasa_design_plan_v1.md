@@ -7,6 +7,17 @@ Primary scope for V1. x: single-folder triage on macOS with basic planning UI an
 
 ---
 
+Create a suitable file structure for this project - 
+   after going through how the project will be evolving in v1 and v2:
+    @agentic_development_docs/project_design_plan/0_fil
+   evyasa_design_plan_v1.md 
+   
+@agentic_development_docs/p
+   roject_design_plan/0_filevyasa_design_plan_v2.md 
+   @agentic_development_docs/project_design_plan/initia
+   l_plan.md @agentic_development_docs/project_design_p
+   lan/tech_stack.md  .
+
 ## V1.1 — Minimal End‑to‑End Slice (Scan → Summarise → Simple Suggestions)
 
 ### Product Goal (v1.1)
@@ -19,6 +30,18 @@ Allow the user to select a single folder, run basic content-aware extraction for
   - Convert to Markdown using `markitdown` where possible.
   - Fill an internal file object with relevant attributes and metadata.
   - For sample of file object class to take inspiration from (another project): /Users/sreenivasanac/SoftwareProjects/brahmasumm2/core/document/base.py
+
+These are the filetypes / mimetypes that we may need to handle:
+
+Users/sreenivasanac/SoftwareProjects/file-vyasa/2_extension_count_downloads.txt 
+
+/Users/sreenivasanac/SoftwareProjects/file-vyasa/2_extension_count_downloads.txt
+
+/Users/sreenivasanac/SoftwareProjects/file-vyasa/3_extension_count_google_drive_1.txt
+
+You can use this sample_data folder as a sample folder to test or as a sample to have an idea:
+/Users/sreenivasanac/SoftwareProjects/file-vyasa/sample_data
+
   - Read only the first 50 lines of the Markdown.
   - Call BYOK remote LLM via LiteLLM (OpenAI-compatible endpoint) with filename + file metadata + snfile content snippet to produce:
     - `ai_brief_summary` (≈2 lines).
@@ -54,7 +77,7 @@ Evolve from raw summaries to structured file objects and a slightly richer UI so
 - Formalise a `FileObject` schema (language-agnostic design) capturing:
   - Path, filename, extension, MIME.
   - Size, created/modified timestamps.
-  - Basic EXIF/metadata for images.
+  - Basic EXIF/metadata for images. (Think what other file related metadata need to be saved)
   - `ai_brief_summary` and `ai_summary` (no rename field yet).
 - Backend returns a list of `FileObject`s for the scanned folder, backed by SQLite storage.
 - UI enhancements:
@@ -94,6 +117,14 @@ Introduce Constella-powered clustering and a first version of the folder plannin
 ### Experience Flow (v1.3)
 1. After scan and summarisation, user clicks "Generate Plan".
 2. Backend runs Constella clustering and returns cluster labels and assignments.
+Update file with the following attributes:
+- cluster_id: Optional[str] - Assigned Constella cluster
+- cluster_confidence: Optional[float] - Confidence score for cluster assignment
+- ai_suggested_folder: Optional[str] - LLM-suggested destination folder
+- ai_suggested_filename: Optional[str] - LLM-suggested rename
+- ai_keywords: list[str] - Extracted keywords/tags
+- embedding_vector: Optional[list[float]] - For semantic search (v4+)
+
 3. Planning board groups files by cluster with proposed folder names.
 4. User can review clusters and adjust proposed folder names, but cannot yet apply changes.
 

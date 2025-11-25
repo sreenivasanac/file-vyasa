@@ -1,0 +1,35 @@
+# FileVyasa Application Settings
+# Non-secret configuration values
+
+app:
+  name: FileVyasa
+  debug: false
+
+api:
+  host: 127.0.0.1
+  port: 8000
+
+database:
+  # Path relative to working directory or absolute
+  path: .filevyasa/app.db
+
+llm:
+  # Provider: openai, anthropic, gemini, etc.
+  provider: openai
+  model: gpt-4o-mini
+  # Optional: Custom API base for compatible endpoints
+  # api_base: https://api.openai.com/v1
+
+extraction:
+  max_content_lines: 50
+
+scan:
+  default_ignore_patterns:
+    - .git
+    - .svn
+    - __pycache__
+    - node_modules
+    - .DS_Store
+    - "*.pyc"
+    - .venv
+    - venv

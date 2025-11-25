@@ -12,7 +12,7 @@ export type FileCategory =
 
 export type ExtractionStatus = 'pending' | 'success' | 'failed' | 'skipped';
 
-export type ScanStatus = 'pending' | 'in_progress' | 'completed' | 'failed';
+export type ScanStatus = 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled';
 
 export interface FileObject {
   id: string;

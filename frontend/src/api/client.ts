@@ -65,6 +65,9 @@ export const api = {
 
     recent: (limit = 10): Promise<ScanResponse[]> =>
       request(`/scan/recent?limit=${limit}`),
+
+    cancel: (scanId: string): Promise<{ scan_id: string; status: string }> =>
+      request(`/scan/${scanId}/cancel`, { method: 'POST' }),
   },
 
   // File endpoints

@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { open } from '@tauri-apps/plugin-dialog';
-import { FolderOpen, Play } from 'lucide-react';
+import { FolderOpen, Play, Settings, Cpu } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 import { useAppStore } from '@/stores/appStore';
 import { api } from '@/api/client';
@@ -18,6 +19,12 @@ export function FolderPicker() {
     setCurrentView,
     backendConnected,
   } = useAppStore();
+
+  // Fetch current LLM config
+  const { data: config } = useQuery({
+    queryKey: ['config'],
+    queryFn: api.config.get,
+  });
 
   const handleSelectFolder = async () => {
     try {
@@ -98,7 +105,7 @@ export function FolderPicker() {
           )}
         </div>
 
-        <div className="mb-6">
+        <div className="mb-6 space-y-2">
           <label className="flex items-center gap-3 text-sm text-text-secondary">
             <input
               type="checkbox"
@@ -108,6 +115,21 @@ export function FolderPicker() {
             />
             Generate AI summaries for files
           </label>
+          {generateSummaries && config && (
+            <div className="ml-7 flex items-center gap-2 text-xs text-text-muted">
+              <Cpu className="h-3 w-3" />
+              <span>
+                Using: <span className="text-text-secondary">{config.llm.provider}/{config.llm.model}</span>
+              </span>
+              <button
+                onClick={() => setCurrentView('settings')}
+                className="ml-1 flex items-center gap-1 text-accent hover:underline"
+              >
+                <Settings className="h-3 w-3" />
+                Change
+              </button>
+            </div>
+          )}
         </div>
 
         {error && (

@@ -85,6 +85,11 @@ def _run_scan(
         failed = 0
         
         for file_obj in files:
+            # Check if scan was cancelled before processing each file
+            session.refresh(scan_session)
+            if scan_session.status == ScanStatus.CANCELLED.value:
+                break
+            
             try:
                 # Extract content
                 file_obj = enrich_file_object(file_obj)
@@ -144,11 +149,13 @@ def _run_scan(
             scan_session.failed_files = failed
             session.commit()
         
-        # Final update
-        scan_session.status = ScanStatus.COMPLETED.value
+        # Final update - only set completed if not cancelled
+        session.refresh(scan_session)
+        if scan_session.status != ScanStatus.CANCELLED.value:
+            scan_session.status = ScanStatus.COMPLETED.value
+            scan_session.completed_at = datetime.now()
         scan_session.processed_files = processed
         scan_session.failed_files = failed
-        scan_session.completed_at = datetime.now()
         session.commit()
         
     except Exception as e:
@@ -300,3 +307,26 @@ async def get_recent_scans(limit: int = 10):
     
     session.close()
     return result
+
+
+@router.post("/{scan_id}/cancel")
+async def cancel_scan(scan_id: str):
+    """Cancel an in-progress scan.
+    
+    Files already processed will be kept. The scan will stop
+    at the next file boundary.
+    """
+    session = get_session()
+    
+    scan_session = session.query(ScanSessionTable).filter_by(id=scan_id).first()
+    if not scan_session:
+        session.close()
+        raise HTTPException(status_code=404, detail=f"Scan not found: {scan_id}")
+    
+    if scan_session.status == ScanStatus.IN_PROGRESS.value:
+        scan_session.status = ScanStatus.CANCELLED.value
+        scan_session.completed_at = datetime.now()
+        session.commit()
+    
+    session.close()
+    return {"scan_id": scan_id, "status": "cancelled"}

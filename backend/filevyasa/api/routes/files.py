@@ -42,6 +42,7 @@ class FileDetailResponse(BaseModel):
     metadata: dict
     ai_brief_summary: str
     ai_summary: str
+    llm_model: Optional[str]
     extraction_status: str
     extraction_error: Optional[str]
     is_password_protected: bool
@@ -148,6 +149,7 @@ async def get_file(file_id: str):
         metadata=file_obj.file_metadata or {},
         ai_brief_summary=file_obj.ai_brief_summary,
         ai_summary=file_obj.ai_summary,
+        llm_model=getattr(file_obj, 'llm_model', None),
         extraction_status=getattr(file_obj, 'extraction_status', 'pending'),
         extraction_error=getattr(file_obj, 'extraction_error', None),
         is_password_protected=getattr(file_obj, 'is_password_protected', False),

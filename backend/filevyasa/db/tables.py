@@ -75,6 +75,7 @@ class FileObjectTable(Base):
     # AI summaries
     ai_brief_summary: Mapped[str] = mapped_column(Text, default="")
     ai_summary: Mapped[str] = mapped_column(Text, default="")
+    llm_model: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     
     # Extraction status
     extraction_status: Mapped[str] = mapped_column(String(20), default="pending")

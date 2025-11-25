@@ -1,23 +1,27 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, List, FolderTree as FolderTreeIcon } from 'lucide-react';
 import { api } from '@/api/client';
 import { useAppStore } from '@/stores/appStore';
 import { FileRow } from './FileRow';
 import { FileFilters } from './FileFilters';
+import { FolderTree } from './FolderTree';
 import { ScanProgress } from '@/components/scan/ScanProgress';
 import { Button } from '@/components/common/Button';
 import { Spinner } from '@/components/common/Spinner';
 import type { FileCategory } from '@/types';
 
+type ViewMode = 'tree' | 'list';
+
 export function FileList() {
-  const { currentScanId, isScanning, selectedFileId, setSelectedFileId } =
+  const { currentScanId, currentScanPath, isScanning, selectedFileId, setSelectedFileId } =
     useAppStore();
 
+  const [viewMode, setViewMode] = useState<ViewMode>('tree');
   const [page, setPage] = useState(1);
   const [category, setCategory] = useState<FileCategory | undefined>();
   const [search, setSearch] = useState('');
-  const pageSize = 50;
+  const pageSize = 500; // Larger page size for tree view
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['files', currentScanId, page, category, search],
@@ -53,12 +57,38 @@ export function FileList() {
     <div className="flex h-full flex-col">
       <div className="border-b border-border p-4">
         <ScanProgress />
-        <FileFilters
-          category={category}
-          onCategoryChange={setCategory}
-          search={search}
-          onSearchChange={setSearch}
-        />
+        <div className="mt-4 flex items-center justify-between">
+          <FileFilters
+            category={category}
+            onCategoryChange={setCategory}
+            search={search}
+            onSearchChange={setSearch}
+          />
+          <div className="ml-4 flex items-center gap-1 rounded-md border border-border bg-bg-tertiary p-1">
+            <button
+              onClick={() => setViewMode('tree')}
+              className={`rounded p-1.5 transition-colors ${
+                viewMode === 'tree'
+                  ? 'bg-accent text-white'
+                  : 'text-text-muted hover:text-text-primary'
+              }`}
+              title="Tree view"
+            >
+              <FolderTreeIcon className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`rounded p-1.5 transition-colors ${
+                viewMode === 'list'
+                  ? 'bg-accent text-white'
+                  : 'text-text-muted hover:text-text-primary'
+              }`}
+              title="List view"
+            >
+              <List className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="flex-1 overflow-auto">
@@ -77,6 +107,14 @@ export function FileList() {
               'No files found'
             )}
           </div>
+        ) : viewMode === 'tree' && currentScanPath ? (
+          <FolderTree
+            files={data?.files || []}
+            rootPath={currentScanPath}
+            selectedFileId={selectedFileId}
+            onSelectFile={setSelectedFileId}
+            isScanning={isScanning}
+          />
         ) : (
           <table className="w-full">
             <thead className="sticky top-0 bg-bg-secondary">
@@ -103,7 +141,7 @@ export function FileList() {
         )}
       </div>
 
-      {totalPages > 1 && (
+      {viewMode === 'list' && totalPages > 1 && (
         <div className="flex items-center justify-between border-t border-border px-4 py-3">
           <span className="text-sm text-text-muted">
             Page {page} of {totalPages} ({data?.total} files)
@@ -126,6 +164,12 @@ export function FileList() {
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
+        </div>
+      )}
+
+      {viewMode === 'tree' && data && (
+        <div className="border-t border-border px-4 py-2 text-xs text-text-muted">
+          {data.total} files total
         </div>
       )}
     </div>

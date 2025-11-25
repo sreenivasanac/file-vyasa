@@ -89,8 +89,20 @@ def _run_scan(
                 # Extract content
                 file_obj = enrich_file_object(file_obj)
                 
-                # Generate summary if enabled
-                if summarizer and file_obj.content_preview:
+                # Check if this is a non-content file (from NonContentExtractor)
+                # These have "file with name" in the content preview
+                is_non_content_file = (
+                    file_obj.content_preview and 
+                    file_obj.metadata.get("extraction_method") == "skipped"
+                )
+                
+                if is_non_content_file:
+                    # Use content_preview as summary directly, skip LLM
+                    file_obj.ai_brief_summary = file_obj.content_preview
+                    file_obj.ai_summary = file_obj.content_preview
+                    file_obj.summarized_at = datetime.now()
+                elif summarizer and file_obj.content_preview:
+                    # Generate LLM summary for content files
                     file_obj = summarizer.summarize(file_obj)
                 
                 # Save to database

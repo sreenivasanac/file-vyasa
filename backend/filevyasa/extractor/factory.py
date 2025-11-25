@@ -8,15 +8,29 @@ from filevyasa.extractor.base import BaseExtractor
 from filevyasa.extractor.text_extractor import TextExtractor
 from filevyasa.extractor.document_extractor import DocumentExtractor
 from filevyasa.extractor.image_extractor import ImageExtractor
+from filevyasa.extractor.non_content_extractor import (
+    CodeExtractor,
+    ArchiveExtractor,
+    GoogleDocsExtractor,
+    UnhandledExtractor,
+    NoExtensionExtractor,
+)
 from filevyasa.models.file_object import FileObject
 
 
-# Instantiate extractors
+# Instantiate extractors (order matters - first match wins)
 _extractors: list[BaseExtractor] = [
     TextExtractor(),
     DocumentExtractor(),
     ImageExtractor(),
+    CodeExtractor(),
+    ArchiveExtractor(),
+    GoogleDocsExtractor(),
+    UnhandledExtractor(),
 ]
+
+# Special extractor for files without extension
+_no_extension_extractor = NoExtensionExtractor()
 
 # Build extension to extractor map
 _extension_map: Dict[str, BaseExtractor] = {}
@@ -36,6 +50,8 @@ def get_extractor(extension: str) -> Optional[BaseExtractor]:
         Extractor instance or None if not supported
     """
     ext = extension.lower().lstrip(".")
+    if not ext:
+        return _no_extension_extractor
     return _extension_map.get(ext)
 
 

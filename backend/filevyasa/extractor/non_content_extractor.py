@@ -81,32 +81,6 @@ class ArchiveExtractor(NonContentExtractor):
         return labels.get(ext, f"{ext.upper()} archive")
 
 
-class GoogleDocsExtractor(NonContentExtractor):
-    """Extractor for Google Docs shortcut files.
-
-    Currently returns a simple description. Future versions will
-    use Google Drive API to fetch actual content.
-    """
-
-    @classmethod
-    def supported_extensions(cls) -> List[str]:
-        return ["gdoc", "gsheet", "gslides", "gform", "gdraw"]
-
-    def _get_type_label(self, ext: str) -> str:
-        labels = {
-            "gdoc": "Google Docs",
-            "gsheet": "Google Sheets",
-            "gslides": "Google Slides",
-            "gform": "Google Forms",
-            "gdraw": "Google Drawings",
-        }
-        return labels.get(ext, "Google Docs")
-
-    # TODO: Implement Google Drive API integration to fetch actual content
-    # def extract_with_api(self, file_path: Path, credentials) -> Tuple[str, Dict[str, Any]]:
-    #     pass
-
-
 class UnhandledExtractor(NonContentExtractor):
     """Extractor for miscellaneous unhandled file types.
 

@@ -53,6 +53,12 @@ llm:
 extraction:
   max_content_lines: 50
 
+google:
+  # Path to Google service account credentials JSON file
+  # Can also be set via FILEVYASA_GOOGLE_CREDENTIALS_PATH environment variable
+  # Documents must be shared with the service account email for access
+  credentials_path: null
+
 scan:
   default_ignore_patterns:
     - .git

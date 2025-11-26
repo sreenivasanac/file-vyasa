@@ -25,6 +25,8 @@ EXTENSION_CATEGORY_MAP = {
     "odt": FileCategory.DOCUMENT,
     "rtf": FileCategory.DOCUMENT,
     "pages": FileCategory.DOCUMENT,
+    "gdoc": FileCategory.DOCUMENT,  # Google Docs
+    "gform": FileCategory.DOCUMENT,  # Google Forms
 
     # Text
     "txt": FileCategory.TEXT,
@@ -37,12 +39,14 @@ EXTENSION_CATEGORY_MAP = {
     "csv": FileCategory.SPREADSHEET,
     "ods": FileCategory.SPREADSHEET,
     "numbers": FileCategory.SPREADSHEET,
+    "gsheet": FileCategory.SPREADSHEET,  # Google Sheets
 
     # Presentations
     "pptx": FileCategory.PRESENTATION,
     "ppt": FileCategory.PRESENTATION,
     "key": FileCategory.PRESENTATION,
     "odp": FileCategory.PRESENTATION,
+    "gslides": FileCategory.PRESENTATION,  # Google Slides
 
     # Images
     "png": FileCategory.IMAGE,
@@ -58,6 +62,7 @@ EXTENSION_CATEGORY_MAP = {
     "svg": FileCategory.IMAGE,
     "ico": FileCategory.IMAGE,
     "psd": FileCategory.IMAGE,
+    "gdraw": FileCategory.IMAGE,  # Google Drawings
 
     # Video
     "mp4": FileCategory.VIDEO,

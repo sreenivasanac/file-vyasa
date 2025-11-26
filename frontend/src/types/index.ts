@@ -98,6 +98,15 @@ export interface LLMConfigUpdate {
   api_base?: string;
 }
 
+export interface GoogleConfig {
+  credentials_configured: boolean;
+  credentials_path: string | null;
+}
+
+export interface GoogleConfigUpdate {
+  credentials_path?: string;
+}
+
 export interface AppConfig {
   app_name: string;
   version: string;
@@ -106,6 +115,7 @@ export interface AppConfig {
   max_content_lines: number;
   default_ignore_patterns: string[];
   llm: LLMConfig;
+  google: GoogleConfig;
 }
 
 export interface CategoryStats {

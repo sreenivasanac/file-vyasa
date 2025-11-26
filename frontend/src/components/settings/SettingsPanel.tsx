@@ -1,7 +1,7 @@
 import { useState, useRef, useLayoutEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { open } from '@tauri-apps/plugin-dialog';
-import { Save, Check, AlertCircle, Server, Cloud, FileText, FolderOpen, X, ShieldCheck } from 'lucide-react';
+import { Save, Check, AlertCircle, Server, Cloud, FileText, FolderOpen, X, ShieldCheck, Cpu, Image } from 'lucide-react';
 import { api } from '@/api/client';
 import { Button } from '@/components/common/Button';
 import { Spinner } from '@/components/common/Spinner';
@@ -84,6 +84,12 @@ export function SettingsPanel() {
   const { data: config, isLoading } = useQuery({
     queryKey: ['config'],
     queryFn: api.config.get,
+  });
+
+  // Check llava model availability
+  const { data: llavaStatus, isLoading: isCheckingLlava } = useQuery({
+    queryKey: ['llava-status'],
+    queryFn: api.config.checkLlavaStatus,
   });
 
   const [provider, setProvider] = useState<ProviderKey>('ollama');
@@ -591,18 +597,79 @@ export function SettingsPanel() {
       </section>
 
       <section className="mb-8 rounded-lg border border-border bg-bg-secondary p-6">
-        <h3 className="mb-4 font-medium text-text-primary">Image Description Model</h3>
-        <p className="text-sm text-text-muted">
+        <div className="mb-4 flex items-center gap-2">
+          <Image className="h-5 w-5 text-accent" />
+          <h3 className="font-medium text-text-primary">Image Description Model</h3>
+        </div>
+        <p className="mb-4 text-sm text-text-muted">
           Image descriptions use <strong className="text-text-secondary">Ollama llava</strong> model exclusively.
-          This is separate from your configured LLM model above.
+          This runs locally on your device for privacy.
         </p>
-        <div className="mt-3 rounded-md border border-border bg-bg-tertiary p-3">
-          <p className="text-xs text-text-muted">
-            To enable image descriptions, install llava:
-            <code className="ml-2 rounded bg-bg-primary px-1 py-0.5 text-xs">
-              ollama pull llava
-            </code>
-          </p>
+
+        {/* Status Indicator */}
+        <div className={`mb-4 rounded-md border p-3 ${
+          isCheckingLlava
+            ? 'border-border bg-bg-tertiary'
+            : llavaStatus?.available
+              ? 'border-success/50 bg-success/10'
+              : 'border-warning/50 bg-warning/10'
+        }`}>
+          <div className="flex items-center gap-2">
+            {isCheckingLlava ? (
+              <>
+                <Cpu className="h-4 w-4 animate-pulse text-text-muted" />
+                <span className="text-sm text-text-muted">Checking Ollama llava model...</span>
+              </>
+            ) : llavaStatus?.available ? (
+              <>
+                <Check className="h-4 w-4 text-success" />
+                <span className="text-sm text-success">llava model is running</span>
+                <Badge variant="success" className="ml-auto">Ready</Badge>
+              </>
+            ) : (
+              <>
+                <AlertCircle className="h-4 w-4 text-warning" />
+                <span className="text-sm text-warning">llava model not available</span>
+                <Badge variant="warning" className="ml-auto">Not Ready</Badge>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Install Instructions */}
+        <div className="rounded-md border border-border bg-bg-tertiary p-3">
+          <div className="flex items-center gap-2 text-sm">
+            <Cpu className="h-4 w-4 text-accent" />
+            <span className="text-text-secondary">Setup Instructions</span>
+          </div>
+          <ol className="mt-2 list-inside list-decimal space-y-1 text-xs text-text-muted">
+            <li>
+              Install Ollama from{' '}
+              <a
+                href="https://ollama.ai"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent hover:underline"
+              >
+                ollama.ai
+              </a>
+            </li>
+            <li>
+              Run: <code className="rounded bg-bg-primary px-1 py-0.5 text-xs">ollama pull llava</code>
+            </li>
+            <li>Ensure Ollama is running when using image descriptions</li>
+          </ol>
+        </div>
+
+        {/* Privacy Notice */}
+        <div className="mt-3 flex items-start gap-2 rounded-md border border-success/50 bg-success/10 p-3">
+          <ShieldCheck className="mt-0.5 h-4 w-4 flex-shrink-0 text-success" />
+          <div className="text-xs">
+            <p className="font-medium text-success">Privacy Protected</p>
+            <p className="mt-1 text-text-muted">
+              Image analysis runs entirely on your device. Your images never leave your computer.
+            </p>
+          </div>
         </div>
       </section>
 

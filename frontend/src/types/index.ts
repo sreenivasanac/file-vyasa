@@ -31,6 +31,9 @@ export interface FileObject {
   ai_brief_summary: string;
   ai_summary: string;
   llm_model: string | null;
+  // Transcription for audio/video files
+  transcription: string | null;
+  transcription_duration: number | null;
   exif_data: Record<string, unknown>;
   metadata: Record<string, unknown>;
   extraction_status: ExtractionStatus;
@@ -51,19 +54,27 @@ export interface MonitoredFolder {
   total_files: number;
   processed_files: number;
   failed_files: number;
-  generate_summaries: boolean;
+  // AI processing options
+  generate_document_summaries: boolean;
+  generate_image_descriptions: boolean;
+  extract_media_transcriptions: boolean;
   ignore_patterns: string[];
   created_at: string;
 }
 
 export interface FolderCreateRequest {
   root_path: string;
-  generate_summaries: boolean;
+  // AI processing options
+  generate_document_summaries: boolean;
+  generate_image_descriptions: boolean;
+  extract_media_transcriptions: boolean;
   ignore_patterns?: string[];
 }
 
 export interface FolderSyncRequest {
-  generate_summaries?: boolean;
+  generate_document_summaries?: boolean;
+  generate_image_descriptions?: boolean;
+  extract_media_transcriptions?: boolean;
 }
 
 export interface FileListResponse {

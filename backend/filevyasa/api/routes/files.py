@@ -14,7 +14,7 @@ router = APIRouter()
 
 class FileListResponse(BaseModel):
     """Response for file list queries."""
-    
+
     total: int
     page: int
     page_size: int
@@ -23,7 +23,7 @@ class FileListResponse(BaseModel):
 
 class FileDetailResponse(BaseModel):
     """Detailed file response."""
-    
+
     id: str
     path: str
     filename: str
@@ -43,6 +43,9 @@ class FileDetailResponse(BaseModel):
     ai_brief_summary: str
     ai_summary: str
     llm_model: Optional[str]
+    # Transcription for audio/video files
+    transcription: Optional[str]
+    transcription_duration: Optional[float]
     extraction_status: str
     extraction_error: Optional[str]
     is_password_protected: bool
@@ -71,9 +74,9 @@ async def list_files(
 ):
     """List files with optional filtering."""
     session = get_session()
-    
+
     query = session.query(FileObjectTable)
-    
+
     # Apply filters
     if folder_id:
         query = query.filter(FileObjectTable.folder_id == folder_id)
@@ -83,14 +86,14 @@ async def list_files(
         query = query.filter(FileObjectTable.extension == extension.lower())
     if search:
         query = query.filter(FileObjectTable.filename.ilike(f"%{search}%"))
-    
+
     # Get total count
     total = query.count()
-    
+
     # Apply pagination
     offset = (page - 1) * page_size
     files = query.offset(offset).limit(page_size).all()
-    
+
     result_files = []
     for f in files:
         result_files.append({
@@ -105,9 +108,9 @@ async def list_files(
             "ai_brief_summary": f.ai_brief_summary,
             "scanned_at": f.scanned_at.isoformat() if f.scanned_at else None,
         })
-    
+
     session.close()
-    
+
     return FileListResponse(
         total=total,
         page=page,
@@ -120,16 +123,16 @@ async def list_files(
 async def get_file(file_id: str):
     """Get detailed information about a specific file."""
     session = get_session()
-    
+
     file_obj = session.query(FileObjectTable).filter_by(id=file_id).first()
     if not file_obj:
         session.close()
         raise HTTPException(status_code=404, detail=f"File not found: {file_id}")
-    
+
     # Calculate parent dir
     path_parts = file_obj.path.rsplit("/", 1)
     parent_dir = path_parts[0] if len(path_parts) > 1 else ""
-    
+
     result = FileDetailResponse(
         id=file_obj.id,
         path=file_obj.path,
@@ -140,7 +143,10 @@ async def get_file(file_id: str):
         size_human=_format_size(file_obj.size_bytes),
         created_at=file_obj.created_at.isoformat() if file_obj.created_at else None,
         modified_at=file_obj.modified_at.isoformat() if file_obj.modified_at else None,
-        accessed_at=file_obj.accessed_at.isoformat() if getattr(file_obj, 'accessed_at', None) else None,
+        accessed_at=(
+            file_obj.accessed_at.isoformat()
+            if getattr(file_obj, 'accessed_at', None) else None
+        ),
         is_symlink=getattr(file_obj, 'is_symlink', False),
         category=file_obj.category,
         parent_dir=parent_dir,
@@ -150,13 +156,15 @@ async def get_file(file_id: str):
         ai_brief_summary=file_obj.ai_brief_summary,
         ai_summary=file_obj.ai_summary,
         llm_model=getattr(file_obj, 'llm_model', None),
+        transcription=getattr(file_obj, 'transcription', None),
+        transcription_duration=getattr(file_obj, 'transcription_duration', None),
         extraction_status=getattr(file_obj, 'extraction_status', 'pending'),
         extraction_error=getattr(file_obj, 'extraction_error', None),
         is_password_protected=getattr(file_obj, 'is_password_protected', False),
         scanned_at=file_obj.scanned_at.isoformat() if file_obj.scanned_at else "",
         summarized_at=file_obj.summarized_at.isoformat() if file_obj.summarized_at else None,
     )
-    
+
     session.close()
     return result
 
@@ -165,20 +173,20 @@ async def get_file(file_id: str):
 async def get_category_stats(folder_id: Optional[str] = None):
     """Get statistics by file category."""
     session = get_session()
-    
+
     from sqlalchemy import func
-    
+
     query = session.query(
         FileObjectTable.category,
         func.count(FileObjectTable.id).label("count"),
         func.sum(FileObjectTable.size_bytes).label("total_size"),
     ).group_by(FileObjectTable.category)
-    
+
     if folder_id:
         query = query.filter(FileObjectTable.folder_id == folder_id)
-    
+
     results = query.all()
-    
+
     stats = {}
     for category, count, total_size in results:
         stats[category] = {
@@ -186,7 +194,7 @@ async def get_category_stats(folder_id: Optional[str] = None):
             "total_size": total_size or 0,
             "total_size_human": _format_size(total_size or 0),
         }
-    
+
     session.close()
     return stats
 
@@ -195,22 +203,22 @@ async def get_category_stats(folder_id: Optional[str] = None):
 async def get_extension_stats(folder_id: Optional[str] = None, limit: int = 20):
     """Get statistics by file extension."""
     session = get_session()
-    
+
     from sqlalchemy import func
-    
+
     query = session.query(
         FileObjectTable.extension,
         func.count(FileObjectTable.id).label("count"),
     ).group_by(FileObjectTable.extension).order_by(
         func.count(FileObjectTable.id).desc()
     ).limit(limit)
-    
+
     if folder_id:
         query = query.filter(FileObjectTable.folder_id == folder_id)
-    
+
     results = query.all()
-    
+
     stats = [{"extension": ext or "(no extension)", "count": count} for ext, count in results]
-    
+
     session.close()
     return stats

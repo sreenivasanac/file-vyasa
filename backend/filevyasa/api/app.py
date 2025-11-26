@@ -27,7 +27,7 @@ def create_app() -> FastAPI:
         version="1.1.0",
         lifespan=lifespan,
     )
-    
+
     # Configure CORS for Tauri/local frontend
     app.add_middleware(
         CORSMiddleware,
@@ -36,17 +36,17 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    
+
     # Register routers
-    from filevyasa.api.routes import folders, files, config
+    from filevyasa.api.routes import config, files, folders
     app.include_router(folders.router, prefix="/api/folders", tags=["folders"])
     app.include_router(files.router, prefix="/api/files", tags=["files"])
     app.include_router(config.router, prefix="/api/config", tags=["config"])
-    
+
     @app.get("/health")
     async def health_check():
         return {"status": "healthy", "version": "1.1.0"}
-    
+
     return app
 
 

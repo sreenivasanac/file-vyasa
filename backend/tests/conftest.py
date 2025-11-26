@@ -1,6 +1,5 @@
 """Pytest configuration and fixtures."""
 
-import os
 import tempfile
 from pathlib import Path
 
@@ -27,14 +26,14 @@ def test_files(temp_dir):
     # Create text file
     text_file = temp_dir / "test.txt"
     text_file.write_text("This is a test file.\nWith multiple lines.\n")
-    
+
     # Create markdown file
     md_file = temp_dir / "readme.md"
     md_file.write_text("# Test README\n\nThis is a test markdown file.\n")
-    
+
     # Create subdirectory with files
     sub_dir = temp_dir / "subdir"
     sub_dir.mkdir()
     (sub_dir / "nested.txt").write_text("Nested file content")
-    
+
     return temp_dir

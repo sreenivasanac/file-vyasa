@@ -12,7 +12,7 @@ router = APIRouter()
 
 class LLMConfigRequest(BaseModel):
     """Request to update LLM configuration."""
-    
+
     provider: Optional[str] = None
     model: Optional[str] = None
     api_key: Optional[str] = None
@@ -21,7 +21,7 @@ class LLMConfigRequest(BaseModel):
 
 class LLMConfigResponse(BaseModel):
     """Response with LLM configuration (without sensitive data)."""
-    
+
     provider: str
     model: str
     api_base: Optional[str]
@@ -30,7 +30,7 @@ class LLMConfigResponse(BaseModel):
 
 class AppConfigResponse(BaseModel):
     """Response with application configuration."""
-    
+
     app_name: str
     version: str
     debug: bool
@@ -63,8 +63,8 @@ async def get_config():
 async def update_llm_config(config: LLMConfigRequest):
     """
     Update LLM configuration for the current session.
-    
-    Note: This updates the in-memory settings only. 
+
+    Note: This updates the in-memory settings only.
     For persistence, use environment variables or .env file.
     """
     if config.provider:
@@ -75,7 +75,7 @@ async def update_llm_config(config: LLMConfigRequest):
         settings.llm_api_key = config.api_key
     if config.api_base:
         settings.llm_api_base = config.api_base
-    
+
     return LLMConfigResponse(
         provider=settings.llm_provider,
         model=settings.llm_model,
@@ -87,10 +87,56 @@ async def update_llm_config(config: LLMConfigRequest):
 @router.get("/supported-extensions")
 async def get_supported_extensions():
     """Get list of supported file extensions for extraction."""
-    from filevyasa.extractor import TextExtractor, DocumentExtractor, ImageExtractor
-    
+    from filevyasa.extractor import DocumentExtractor, ImageExtractor, TextExtractor
+
     return {
         "text": TextExtractor.supported_extensions(),
         "document": DocumentExtractor.supported_extensions(),
         "image": ImageExtractor.supported_extensions(),
     }
+
+
+class LlavaStatusResponse(BaseModel):
+    """Response for llava model availability check."""
+    available: bool
+    reason: Optional[str] = None
+
+
+@router.get("/llava-status", response_model=LlavaStatusResponse)
+async def check_llava_status():
+    """Check if Ollama llava model is available for image descriptions."""
+    import httpx
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get("http://localhost:11434/api/tags")
+            if response.status_code != 200:
+                return LlavaStatusResponse(
+                    available=False,
+                    reason="Ollama is not running. Start it with: ollama serve"
+                )
+
+            models = response.json().get("models", [])
+            llava_available = any(
+                m.get("name", "").startswith("llava")
+                for m in models
+            )
+
+            if llava_available:
+                return LlavaStatusResponse(available=True, reason=None)
+            else:
+                return LlavaStatusResponse(
+                    available=False,
+                    reason="llava model not installed. Run: ollama pull llava"
+                )
+
+    except httpx.ConnectError:
+        return LlavaStatusResponse(
+            available=False,
+            reason="Cannot connect to Ollama. Start it with: ollama serve"
+        )
+    except Exception as e:
+        return LlavaStatusResponse(
+            available=False,
+            reason=f"Error checking Ollama: {str(e)}"
+        )

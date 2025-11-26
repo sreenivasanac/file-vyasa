@@ -6,12 +6,12 @@ from typing import Any, Dict, Optional, Tuple
 from filevyasa.config import settings
 from filevyasa.extractor.base import BaseExtractor
 from filevyasa.extractor.document_extractor import DocumentExtractor
+from filevyasa.extractor.google_workspace_extractor import GoogleDocsExtractor
 from filevyasa.extractor.image_extractor import ImageExtractor
 from filevyasa.extractor.media_extractor import MediaExtractor
 from filevyasa.extractor.non_content_extractor import (
     ArchiveExtractor,
     CodeExtractor,
-    GoogleDocsExtractor,
     NoExtensionExtractor,
     UnhandledExtractor,
 )

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { open } from '@tauri-apps/plugin-dialog';
-import { FolderOpen, Plus, Settings, Cpu, Check, AlertCircle } from 'lucide-react';
+import { FolderOpen, Plus, Settings, Cpu, Check, AlertCircle, Cloud, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 import { useAppStore } from '@/stores/appStore';
 import { api } from '@/api/client';
@@ -36,6 +36,30 @@ export function AddFolder() {
     queryFn: api.config.checkLlavaStatus,
     enabled: generateImageDescriptions,
   });
+
+  // Google Workspace verification state
+  const [isVerifyingGoogle, setIsVerifyingGoogle] = useState(false);
+  const [googleVerifyResult, setGoogleVerifyResult] = useState<{
+    success: boolean;
+    message: string;
+    service_account_email?: string;
+  } | null>(null);
+
+  const handleVerifyGoogle = async () => {
+    setIsVerifyingGoogle(true);
+    setGoogleVerifyResult(null);
+    try {
+      const result = await api.config.verifyGoogle();
+      setGoogleVerifyResult(result);
+    } catch (err) {
+      setGoogleVerifyResult({
+        success: false,
+        message: err instanceof Error ? err.message : 'Verification failed',
+      });
+    } finally {
+      setIsVerifyingGoogle(false);
+    }
+  };
 
   // Determine if Add Folder button should be disabled
   const canAddFolder = () => {
@@ -217,6 +241,62 @@ export function AddFolder() {
                 <span>Uses local <span className="text-text-secondary">OpenAI Whisper</span> model (runs on device)</span>
               </div>
             )}
+          </div>
+
+          {/* Google Workspace */}
+          <div className="rounded-lg border border-border/50 bg-bg-tertiary/30 p-3">
+            <div className="flex items-center gap-3 text-sm">
+              <Cloud className="h-4 w-4 text-accent" />
+              <span className="text-text-primary">Google Drive / Workspace Files</span>
+              <span className="text-xs text-text-muted">(Docs, Sheets, Slides, Forms)</span>
+            </div>
+            <div className="ml-7 mt-2">
+              {config?.google?.credentials_configured ? (
+                <div className="space-y-2">
+                  <span className="flex items-center gap-1 text-xs text-success">
+                    <Check className="h-3 w-3" /> Credentials configured
+                  </span>
+                  {!googleVerifyResult && (
+                    <button
+                      onClick={handleVerifyGoogle}
+                      disabled={isVerifyingGoogle}
+                      className="flex items-center gap-1 text-xs text-accent hover:underline"
+                    >
+                      <ShieldCheck className="h-3 w-3" />
+                      {isVerifyingGoogle ? 'Verifying...' : 'Verify connection'}
+                    </button>
+                  )}
+                  {googleVerifyResult && (
+                    <div className={`text-xs ${googleVerifyResult.success ? 'text-success' : 'text-error'}`}>
+                      {googleVerifyResult.success ? (
+                        <span className="flex items-center gap-1">
+                          <Check className="h-3 w-3" />
+                          Connected as {googleVerifyResult.service_account_email}
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" />
+                          {googleVerifyResult.message}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <span className="flex items-center gap-1 text-xs text-text-muted">
+                    <AlertCircle className="h-3 w-3" /> Not configured - .gdoc/.gsheet files will show basic info only
+                  </span>
+                  <button
+                    onClick={() => setCurrentView('settings')}
+                    className="flex items-center gap-1 text-xs text-accent hover:underline"
+                  >
+                    <Settings className="h-3 w-3" />
+                    Configure in Settings
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

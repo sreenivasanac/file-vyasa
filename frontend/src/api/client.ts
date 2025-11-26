@@ -7,6 +7,8 @@ import type {
   FileObject,
   FolderCreateRequest,
   FolderSyncRequest,
+  GoogleConfig,
+  GoogleConfigUpdate,
   LLMConfig,
   LLMConfigUpdate,
   MonitoredFolder,
@@ -132,5 +134,20 @@ export const api = {
 
     checkLlavaStatus: (): Promise<{ available: boolean; reason: string | null }> =>
       request('/config/llava-status'),
+
+    updateGoogle: (data: GoogleConfigUpdate): Promise<GoogleConfig> =>
+      request('/config/google', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    verifyGoogle: (): Promise<{
+      success: boolean;
+      message: string;
+      service_account_email?: string;
+    }> =>
+      request('/config/google/verify', {
+        method: 'POST',
+      }),
   },
 };

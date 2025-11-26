@@ -78,6 +78,12 @@ class Settings(BaseSettings):
         description="Max lines to read for summarization"
     )
 
+    # Google Workspace API settings
+    google_credentials_path: Optional[str] = Field(
+        default=_yaml_config.get("google", {}).get("credentials_path"),
+        description="Path to Google service account credentials JSON file"
+    )
+
     # Scan settings
     default_ignore_patterns: list[str] = Field(
         default=_yaml_config.get("scan", {}).get("default_ignore_patterns", [

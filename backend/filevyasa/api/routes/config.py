@@ -28,6 +28,19 @@ class LLMConfigResponse(BaseModel):
     api_key_configured: bool
 
 
+class GoogleConfigRequest(BaseModel):
+    """Request to update Google credentials configuration."""
+
+    credentials_path: Optional[str] = None
+
+
+class GoogleConfigResponse(BaseModel):
+    """Response with Google credentials configuration."""
+
+    credentials_configured: bool
+    credentials_path: Optional[str] = None
+
+
 class AppConfigResponse(BaseModel):
     """Response with application configuration."""
 
@@ -38,6 +51,7 @@ class AppConfigResponse(BaseModel):
     max_content_lines: int
     default_ignore_patterns: list[str]
     llm: LLMConfigResponse
+    google: GoogleConfigResponse
 
 
 @router.get("/", response_model=AppConfigResponse)
@@ -55,6 +69,10 @@ async def get_config():
             model=settings.llm_model,
             api_base=settings.llm_api_base,
             api_key_configured=bool(settings.llm_api_key),
+        ),
+        google=GoogleConfigResponse(
+            credentials_configured=bool(settings.google_credentials_path),
+            credentials_path=settings.google_credentials_path,
         ),
     )
 
@@ -82,6 +100,98 @@ async def update_llm_config(config: LLMConfigRequest):
         api_base=settings.llm_api_base,
         api_key_configured=bool(settings.llm_api_key),
     )
+
+
+@router.post("/google", response_model=GoogleConfigResponse)
+async def update_google_config(config: GoogleConfigRequest):
+    """
+    Update Google Workspace credentials configuration.
+
+    Note: This updates the in-memory settings only.
+    For persistence, use environment variables or .env file.
+    """
+    if config.credentials_path is not None:
+        settings.google_credentials_path = (
+            config.credentials_path if config.credentials_path else None
+        )
+
+    return GoogleConfigResponse(
+        credentials_configured=bool(settings.google_credentials_path),
+        credentials_path=settings.google_credentials_path,
+    )
+
+
+class GoogleVerifyResponse(BaseModel):
+    """Response for Google credentials verification."""
+
+    success: bool
+    message: str
+    service_account_email: Optional[str] = None
+
+
+@router.post("/google/verify", response_model=GoogleVerifyResponse)
+async def verify_google_credentials():
+    """Verify Google Workspace credentials by attempting to authenticate."""
+    from pathlib import Path
+
+    credentials_path = settings.google_credentials_path
+    if not credentials_path:
+        return GoogleVerifyResponse(
+            success=False,
+            message="No credentials path configured. Please select a credentials file first."
+        )
+
+    credentials_file = Path(credentials_path)
+    if not credentials_file.exists():
+        return GoogleVerifyResponse(
+            success=False,
+            message=f"Credentials file not found: {credentials_path}"
+        )
+
+    try:
+        from google.oauth2.service_account import Credentials
+        from googleapiclient.discovery import build
+    except ImportError:
+        return GoogleVerifyResponse(
+            success=False,
+            message="Google API libraries not installed. Install with: pip install google-api-python-client google-auth"
+        )
+
+    try:
+        scopes = [
+            "https://www.googleapis.com/auth/drive.readonly",
+            "https://www.googleapis.com/auth/documents.readonly",
+        ]
+        credentials = Credentials.from_service_account_file(
+            str(credentials_file), scopes=scopes
+        )
+
+        # Try to build Drive service and make a simple API call
+        drive_service = build("drive", "v3", credentials=credentials)
+        # Just try to get about info - this validates credentials work
+        drive_service.about().get(fields="user").execute()
+
+        return GoogleVerifyResponse(
+            success=True,
+            message="Successfully authenticated with Google Workspace APIs",
+            service_account_email=credentials.service_account_email
+        )
+    except Exception as e:
+        error_msg = str(e)
+        if "invalid_grant" in error_msg.lower():
+            return GoogleVerifyResponse(
+                success=False,
+                message="Invalid credentials. Please check the service account JSON file."
+            )
+        elif "access_denied" in error_msg.lower() or "403" in error_msg:
+            return GoogleVerifyResponse(
+                success=False,
+                message="Access denied. Please enable the required APIs in Google Cloud Console."
+            )
+        return GoogleVerifyResponse(
+            success=False,
+            message=f"Authentication failed: {error_msg}"
+        )
 
 
 @router.get("/supported-extensions")

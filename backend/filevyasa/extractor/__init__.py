@@ -3,11 +3,11 @@
 from filevyasa.extractor.base import BaseExtractor
 from filevyasa.extractor.document_extractor import DocumentExtractor
 from filevyasa.extractor.factory import enrich_file_object, extract_content, get_extractor
+from filevyasa.extractor.google_workspace_extractor import GoogleDocsExtractor
 from filevyasa.extractor.image_extractor import ImageExtractor
 from filevyasa.extractor.non_content_extractor import (
     ArchiveExtractor,
     CodeExtractor,
-    GoogleDocsExtractor,
     NoExtensionExtractor,
     NonContentExtractor,
     UnhandledExtractor,

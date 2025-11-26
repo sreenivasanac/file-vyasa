@@ -32,11 +32,11 @@ def get_async_db_url() -> str:
 def init_db() -> None:
     """Initialize the database and create tables."""
     global _engine, _session_maker
-    
+
     db_url = get_db_url()
     _engine = create_engine(db_url, echo=False)
     _session_maker = sessionmaker(bind=_engine)
-    
+
     # Create all tables
     Base.metadata.create_all(_engine)
 
@@ -44,11 +44,11 @@ def init_db() -> None:
 async def init_async_db() -> None:
     """Initialize the async database and create tables."""
     global _async_engine, _async_session_maker
-    
+
     db_url = get_async_db_url()
     _async_engine = create_async_engine(db_url, echo=False)
     _async_session_maker = async_sessionmaker(_async_engine, expire_on_commit=False)
-    
+
     # Create all tables
     async with _async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -71,7 +71,7 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     """Get an async database session."""
     if _async_session_maker is None:
         await init_async_db()
-    
+
     async with _async_session_maker() as session:
         try:
             yield session

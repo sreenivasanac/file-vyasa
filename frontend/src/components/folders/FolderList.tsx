@@ -15,6 +15,7 @@ import { useAppStore } from '@/stores/appStore';
 import { Spinner } from '@/components/common/Spinner';
 import { Badge } from '@/components/common/Badge';
 import { Button } from '@/components/common/Button';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { formatDate, truncatePath } from '@/lib/utils';
 import type { FolderStatus, MonitoredFolder } from '@/types';
 
@@ -24,6 +25,7 @@ export function FolderList() {
   const queryClient = useQueryClient();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
 
   const { data: folders, isLoading, refetch } = useQuery({
     queryKey: ['folders'],
@@ -70,14 +72,17 @@ export function FolderList() {
     }
   };
 
-  const handleDelete = async (e: React.MouseEvent, folderId: string) => {
+  const handleDelete = (e: React.MouseEvent, folderId: string) => {
     e.stopPropagation();
-    if (!confirm('Remove this folder from monitoring? Your files will not be deleted.')) {
-      return;
-    }
-    setDeletingId(folderId);
+    setFolderToDelete(folderId);
+  };
+
+  const confirmDelete = async () => {
+    if (!folderToDelete) return;
+    setDeletingId(folderToDelete);
+    setFolderToDelete(null);
     try {
-      await api.folders.delete(folderId);
+      await api.folders.delete(folderToDelete);
       queryClient.invalidateQueries({ queryKey: ['folders'] });
     } catch (err) {
       console.error('Failed to delete folder:', err);
@@ -209,6 +214,17 @@ export function FolderList() {
           </div>
         ))}
       </div>
+
+      <ConfirmDialog
+        isOpen={folderToDelete !== null}
+        title="Remove Folder"
+        message="Remove this folder from monitoring? Your files will not be deleted."
+        confirmText="Remove"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setFolderToDelete(null)}
+      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useRef, useLayoutEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Save, Check, AlertCircle, Server, Cloud } from 'lucide-react';
 import { api } from '@/api/client';
@@ -92,17 +92,31 @@ export function SettingsPanel() {
   const [apiBase, setApiBase] = useState('');
   const [isSaved, setIsSaved] = useState(false);
 
-  // Initialize form with current config
-  useEffect(() => {
-    if (config) {
-      const currentProvider = config.llm.provider as ProviderKey;
-      if (PROVIDERS[currentProvider]) {
-        setProvider(currentProvider);
+  // Track if form has been initialized from config
+  const isInitialized = useRef(false);
+
+  // Initialize form with current config (only once when data arrives)
+  const configProvider = config?.llm.provider as ProviderKey | undefined;
+  const configModel = config?.llm.model;
+  const configApiBase = config?.llm.api_base;
+
+  // Use layout effect to set initial values before paint
+  // This is a legitimate pattern for initializing form state from server data
+  useLayoutEffect(() => {
+    if (!isInitialized.current && config) {
+      if (configProvider && PROVIDERS[configProvider]) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setProvider(configProvider);
       }
-      setModel(config.llm.model);
-      setApiBase(config.llm.api_base || '');
+      if (configModel) {
+        setModel(configModel);
+      }
+      if (configApiBase !== undefined) {
+        setApiBase(configApiBase || '');
+      }
+      isInitialized.current = true;
     }
-  }, [config]);
+  }, [config, configProvider, configModel, configApiBase]);
 
   const mutation = useMutation({
     mutationFn: api.config.updateLLM,
@@ -316,6 +330,22 @@ export function SettingsPanel() {
               </span>
             )}
           </div>
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-border bg-bg-secondary p-6">
+        <h3 className="mb-4 font-medium text-text-primary">Image Description Model</h3>
+        <p className="text-sm text-text-muted">
+          Image descriptions use <strong className="text-text-secondary">Ollama llava</strong> model exclusively.
+          This is separate from your configured LLM model above.
+        </p>
+        <div className="mt-3 rounded-md border border-border bg-bg-tertiary p-3">
+          <p className="text-xs text-text-muted">
+            To enable image descriptions, install llava:
+            <code className="ml-2 rounded bg-bg-primary px-1 py-0.5 text-xs">
+              ollama pull llava
+            </code>
+          </p>
         </div>
       </section>
 

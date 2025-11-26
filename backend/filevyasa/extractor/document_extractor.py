@@ -12,10 +12,10 @@ logger = structlog.get_logger()
 
 class DocumentExtractor(BaseExtractor):
     """Extractor for documents using markitdown library."""
-    
+
     def __init__(self):
         self._markitdown = None
-    
+
     def _get_markitdown(self):
         """Lazy load markitdown to avoid import errors if not installed."""
         if self._markitdown is None:
@@ -26,7 +26,7 @@ class DocumentExtractor(BaseExtractor):
                 logger.warning("markitdown_not_installed")
                 return None
         return self._markitdown
-    
+
     @classmethod
     def supported_extensions(cls) -> list[str]:
         return [
@@ -41,34 +41,34 @@ class DocumentExtractor(BaseExtractor):
             "json",
             "ipynb",
         ]
-    
+
     def extract(self, file_path: Path) -> Tuple[str, Dict[str, Any]]:
         """Extract content from documents using markitdown."""
         metadata = {}
-        
+
         md = self._get_markitdown()
         if md is None:
             return self._fallback_extract(file_path, metadata)
-        
+
         try:
             result = md.convert(str(file_path))
             content = result.text_content if result.text_content else ""
-            
+
             # Add basic metadata
             metadata["extraction_method"] = "markitdown"
             metadata["source_type"] = file_path.suffix.lower()
-            
+
             return content, metadata
-            
+
         except Exception as e:
             logger.error("markitdown_extraction_failed", path=str(file_path), error=str(e))
             return self._fallback_extract(file_path, metadata)
-    
+
     def _fallback_extract(self, file_path: Path, metadata: Dict) -> Tuple[str, Dict[str, Any]]:
         """Fallback extraction for when markitdown fails."""
         metadata["extraction_method"] = "fallback"
         ext = file_path.suffix.lower()
-        
+
         # Try to read as text for certain formats
         if ext in [".csv", ".html", ".htm", ".xml", ".json"]:
             try:
@@ -76,7 +76,7 @@ class DocumentExtractor(BaseExtractor):
                 return content, metadata
             except Exception:
                 pass
-        
+
         # For PDFs, try pdfplumber
         if ext == ".pdf":
             try:
@@ -93,7 +93,7 @@ class DocumentExtractor(BaseExtractor):
                     return content, metadata
             except Exception as e:
                 logger.warning("pdfplumber_failed", error=str(e))
-        
+
         # For DOCX, try python-docx
         if ext == ".docx":
             try:
@@ -106,5 +106,5 @@ class DocumentExtractor(BaseExtractor):
                 return content, metadata
             except Exception as e:
                 logger.warning("python_docx_failed", error=str(e))
-        
+
         return f"[Unable to extract content from {ext} file]", metadata

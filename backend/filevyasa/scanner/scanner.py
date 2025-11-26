@@ -1,10 +1,9 @@
 """Directory scanner for file discovery."""
 
 import mimetypes
-import os
 from datetime import datetime
 from pathlib import Path
-from typing import Generator, List, Optional
+from typing import Generator, List
 from uuid import uuid4
 
 import structlog
@@ -26,25 +25,25 @@ EXTENSION_CATEGORY_MAP = {
     "odt": FileCategory.DOCUMENT,
     "rtf": FileCategory.DOCUMENT,
     "pages": FileCategory.DOCUMENT,
-    
+
     # Text
     "txt": FileCategory.TEXT,
     "md": FileCategory.TEXT,
     "markdown": FileCategory.TEXT,
-    
+
     # Spreadsheets
     "xlsx": FileCategory.SPREADSHEET,
     "xls": FileCategory.SPREADSHEET,
     "csv": FileCategory.SPREADSHEET,
     "ods": FileCategory.SPREADSHEET,
     "numbers": FileCategory.SPREADSHEET,
-    
+
     # Presentations
     "pptx": FileCategory.PRESENTATION,
     "ppt": FileCategory.PRESENTATION,
     "key": FileCategory.PRESENTATION,
     "odp": FileCategory.PRESENTATION,
-    
+
     # Images
     "png": FileCategory.IMAGE,
     "jpg": FileCategory.IMAGE,
@@ -59,7 +58,7 @@ EXTENSION_CATEGORY_MAP = {
     "svg": FileCategory.IMAGE,
     "ico": FileCategory.IMAGE,
     "psd": FileCategory.IMAGE,
-    
+
     # Video
     "mp4": FileCategory.VIDEO,
     "mov": FileCategory.VIDEO,
@@ -69,7 +68,7 @@ EXTENSION_CATEGORY_MAP = {
     "flv": FileCategory.VIDEO,
     "m4v": FileCategory.VIDEO,
     "webm": FileCategory.VIDEO,
-    
+
     # Audio
     "mp3": FileCategory.AUDIO,
     "wav": FileCategory.AUDIO,
@@ -78,14 +77,14 @@ EXTENSION_CATEGORY_MAP = {
     "aac": FileCategory.AUDIO,
     "ogg": FileCategory.AUDIO,
     "wma": FileCategory.AUDIO,
-    
+
     # Archives
     "zip": FileCategory.ARCHIVE,
     "tar": FileCategory.ARCHIVE,
     "gz": FileCategory.ARCHIVE,
     "rar": FileCategory.ARCHIVE,
     "7z": FileCategory.ARCHIVE,
-    
+
     # Code
     "py": FileCategory.CODE,
     "js": FileCategory.CODE,
@@ -120,7 +119,7 @@ def get_file_category(extension: str) -> FileCategory:
 
 class Scanner:
     """Directory scanner for discovering and cataloging files."""
-    
+
     def __init__(
         self,
         ignore_patterns: List[str] | None = None,
@@ -128,7 +127,7 @@ class Scanner:
     ):
         """
         Initialize the scanner.
-        
+
         Args:
             ignore_patterns: Patterns to ignore (defaults to config patterns)
             folder_id: Optional folder ID for associating scanned files
@@ -136,7 +135,7 @@ class Scanner:
         patterns = ignore_patterns or settings.default_ignore_patterns
         self.file_filter = FileFilter(patterns)
         self.folder_id = folder_id or str(uuid4())
-    
+
     def scan_directory(
         self,
         root_path: str | Path,
@@ -144,64 +143,64 @@ class Scanner:
     ) -> Generator[FileObject, None, None]:
         """
         Scan a directory and yield FileObject instances.
-        
+
         Args:
             root_path: Root directory to scan
             recursive: Whether to scan subdirectories
-            
+
         Yields:
             FileObject for each discovered file
         """
         root = Path(root_path).resolve()
-        
+
         if not root.exists():
             raise ValueError(f"Directory does not exist: {root}")
         if not root.is_dir():
             raise ValueError(f"Path is not a directory: {root}")
-        
+
         logger.info("starting_scan", root=str(root), recursive=recursive)
-        
+
         if recursive:
             file_iterator = root.rglob("*")
         else:
             file_iterator = root.glob("*")
-        
+
         for file_path in file_iterator:
             # Skip directories
             if file_path.is_dir():
                 continue
-            
+
             # Skip ignored files
             if self.file_filter.should_ignore(file_path):
                 logger.debug("skipping_ignored_file", path=str(file_path))
                 continue
-            
+
             try:
                 file_obj = self._create_file_object(file_path)
                 yield file_obj
             except Exception as e:
                 logger.error("error_processing_file", path=str(file_path), error=str(e))
                 continue
-    
+
     def _create_file_object(self, file_path: Path) -> FileObject:
         """Create a FileObject from a file path."""
         stat = file_path.stat()
-        
+
         extension = file_path.suffix.lstrip(".").lower()
         mime_type, _ = mimetypes.guess_type(str(file_path))
         category = get_file_category(extension)
-        
+
         # Get timestamps
         try:
             created_at = datetime.fromtimestamp(stat.st_birthtime)
         except AttributeError:
             # st_birthtime not available on all platforms
             created_at = datetime.fromtimestamp(stat.st_ctime)
-        
+
         modified_at = datetime.fromtimestamp(stat.st_mtime)
         accessed_at = datetime.fromtimestamp(stat.st_atime)
         is_symlink = file_path.is_symlink()
-        
+
         return FileObject(
             id=str(uuid4()),
             folder_id=self.folder_id,
@@ -217,7 +216,7 @@ class Scanner:
             category=category,
             scanned_at=datetime.now(),
         )
-    
+
     def scan_to_list(
         self,
         root_path: str | Path,
@@ -225,11 +224,11 @@ class Scanner:
     ) -> List[FileObject]:
         """
         Scan a directory and return a list of FileObjects.
-        
+
         Args:
             root_path: Root directory to scan
             recursive: Whether to scan subdirectories
-            
+
         Returns:
             List of FileObject instances
         """

@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { open } from '@tauri-apps/plugin-dialog';
-import { FolderOpen, Plus, Settings, Cpu } from 'lucide-react';
+import { FolderOpen, Plus, Settings, Cpu, Check, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 import { useAppStore } from '@/stores/appStore';
 import { api } from '@/api/client';
 
 export function AddFolder() {
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
-  const [generateSummaries, setGenerateSummaries] = useState(true);
+  // AI processing options - all enabled by default
+  const [generateDocumentSummaries, setGenerateDocumentSummaries] = useState(true);
+  const [generateImageDescriptions, setGenerateImageDescriptions] = useState(true);
+  const [extractMediaTranscriptions, setExtractMediaTranscriptions] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const queryClient = useQueryClient();
@@ -26,6 +29,20 @@ export function AddFolder() {
     queryKey: ['config'],
     queryFn: api.config.get,
   });
+
+  // Check llava availability when image descriptions is enabled
+  const { data: llavaStatus, isLoading: isCheckingLlava } = useQuery({
+    queryKey: ['llava-status'],
+    queryFn: api.config.checkLlavaStatus,
+    enabled: generateImageDescriptions,
+  });
+
+  // Determine if Add Folder button should be disabled
+  const canAddFolder = () => {
+    if (!selectedPath || !backendConnected) return false;
+    if (generateImageDescriptions && llavaStatus && !llavaStatus.available) return false;
+    return true;
+  };
 
   const handleSelectFolder = async () => {
     try {
@@ -54,7 +71,9 @@ export function AddFolder() {
     try {
       const folder = await api.folders.add({
         root_path: selectedPath,
-        generate_summaries: generateSummaries,
+        generate_document_summaries: generateDocumentSummaries,
+        generate_image_descriptions: generateImageDescriptions,
+        extract_media_transcriptions: extractMediaTranscriptions,
       });
 
       // Folder is auto-syncing after add
@@ -121,31 +140,84 @@ export function AddFolder() {
           )}
         </div>
 
-        <div className="mb-6 space-y-2">
-          <label className="flex items-center gap-3 text-sm text-text-secondary">
-            <input
-              type="checkbox"
-              checked={generateSummaries}
-              onChange={(e) => setGenerateSummaries(e.target.checked)}
-              className="h-4 w-4 rounded border-border bg-bg-tertiary accent-accent"
-            />
-            Generate AI summaries for files
-          </label>
-          {generateSummaries && config && (
-            <div className="ml-7 flex items-center gap-2 text-xs text-text-muted">
-              <Cpu className="h-3 w-3" />
-              <span>
-                Using: <span className="text-text-secondary">{config.llm.provider}/{config.llm.model}</span>
-              </span>
-              <button
-                onClick={() => setCurrentView('settings')}
-                className="ml-1 flex items-center gap-1 text-accent hover:underline"
-              >
-                <Settings className="h-3 w-3" />
-                Change
-              </button>
+        <div className="mb-6 space-y-4">
+          <p className="text-sm font-medium text-text-primary">AI Processing Options:</p>
+          
+          {/* Document Summaries */}
+          <div className="rounded-lg border border-border/50 bg-bg-tertiary/30 p-3">
+            <label className="flex items-center gap-3 text-sm text-text-secondary">
+              <input
+                type="checkbox"
+                checked={generateDocumentSummaries}
+                onChange={(e) => setGenerateDocumentSummaries(e.target.checked)}
+                className="h-4 w-4 rounded border-border bg-bg-tertiary accent-accent"
+              />
+              <span className="text-text-primary">Generate AI summaries for Documents</span>
+              <span className="text-xs text-text-muted">(PDF, DOCX, TXT, etc.)</span>
+            </label>
+            {generateDocumentSummaries && config && (
+              <div className="ml-7 mt-2 flex items-center gap-2 text-xs text-text-muted">
+                <Cpu className="h-3 w-3" />
+                <span>
+                  Using: <span className="text-text-secondary">{config.llm.provider}/{config.llm.model}</span>
+                </span>
+                <button
+                  onClick={() => setCurrentView('settings')}
+                  className="ml-1 flex items-center gap-1 text-accent hover:underline"
+                >
+                  <Settings className="h-3 w-3" />
+                  Change
+                </button>
+              </div>
+            )}
+          </div>
+          
+          {/* Image Descriptions */}
+          <div className="rounded-lg border border-border/50 bg-bg-tertiary/30 p-3">
+            <label className="flex items-center gap-3 text-sm text-text-secondary">
+              <input
+                type="checkbox"
+                checked={generateImageDescriptions}
+                onChange={(e) => setGenerateImageDescriptions(e.target.checked)}
+                className="h-4 w-4 rounded border-border bg-bg-tertiary accent-accent"
+              />
+              <span className="text-text-primary">Generate AI descriptions for Images</span>
+            </label>
+            <div className="ml-7 mt-2">
+              {isCheckingLlava ? (
+                <span className="flex items-center gap-1 text-xs text-text-muted">
+                  <Cpu className="h-3 w-3 animate-pulse" /> Checking Ollama llava model...
+                </span>
+              ) : llavaStatus?.available ? (
+                <span className="flex items-center gap-1 text-xs text-success">
+                  <Check className="h-3 w-3" /> Uses local Ollama llava model (running)
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-xs text-error">
+                  <AlertCircle className="h-3 w-3" /> Requires local Ollama llava - run: <code className="ml-1 rounded bg-bg-tertiary px-1">ollama pull llava</code>
+                </span>
+              )}
             </div>
-          )}
+          </div>
+          
+          {/* Media Transcription */}
+          <div className="rounded-lg border border-border/50 bg-bg-tertiary/30 p-3">
+            <label className="flex items-center gap-3 text-sm text-text-secondary">
+              <input
+                type="checkbox"
+                checked={extractMediaTranscriptions}
+                onChange={(e) => setExtractMediaTranscriptions(e.target.checked)}
+                className="h-4 w-4 rounded border-border bg-bg-tertiary accent-accent"
+              />
+              <span className="text-text-primary">Extract audio transcription for Media files</span>
+            </label>
+            {extractMediaTranscriptions && (
+              <div className="ml-7 mt-2 flex items-center gap-1 text-xs text-text-muted">
+                <Cpu className="h-3 w-3" />
+                <span>Uses local <span className="text-text-secondary">OpenAI Whisper</span> model (runs on device)</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {error && (
@@ -156,7 +228,7 @@ export function AddFolder() {
 
         <Button
           onClick={handleAddFolder}
-          disabled={!selectedPath || isAdding || !backendConnected}
+          disabled={!canAddFolder() || isAdding}
           className="w-full"
           size="lg"
         >

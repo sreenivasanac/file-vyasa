@@ -129,5 +129,8 @@ export const api = {
       document: string[];
       image: string[];
     }> => request('/config/supported-extensions'),
+
+    checkLlavaStatus: (): Promise<{ available: boolean; reason: string | null }> =>
+      request('/config/llava-status'),
   },
 };

@@ -13,7 +13,8 @@ from filevyasa.config import settings
 from filevyasa.db.connection import get_session
 from filevyasa.db.tables import FileObjectTable, MonitoredFolderTable
 from filevyasa.extractor import enrich_file_object
-from filevyasa.llm import ImageDescriber, Summarizer, Transcriber
+from filevyasa.extractor.media_extractor import MediaTranscriber
+from filevyasa.llm import ImageDescriber, Summarizer
 from filevyasa.models.enums import FileCategory, FolderStatus
 from filevyasa.models.file_object import FileObject
 from filevyasa.models.folder import (
@@ -136,7 +137,7 @@ def _run_sync(
             image_describer = ImageDescriber()
 
         if extract_media_transcriptions:
-            transcriber = Transcriber()
+            transcriber = MediaTranscriber()
 
         # Get existing files from DB indexed by path
         existing_files = {
@@ -311,7 +312,7 @@ def _process_file_by_category(
     file_obj: FileObject,
     summarizer: Optional[Summarizer],
     image_describer: Optional[ImageDescriber],
-    transcriber: Optional[Transcriber],
+    transcriber: Optional[MediaTranscriber],
     generate_document_summaries: bool,
 ) -> FileObject:
     """Process file based on its category using appropriate AI processor.

@@ -11,6 +11,7 @@ import {
   CheckCircle,
   Loader,
   AlertCircle,
+  Play,
 } from 'lucide-react';
 import { api } from '@/api/client';
 import { useAppStore } from '@/stores/appStore';
@@ -32,6 +33,7 @@ export function FileList() {
     currentFolderId,
     currentFolderPath,
     isSyncing,
+    syncProgress,
     selectedFileId,
     setSelectedFileId,
     folders,
@@ -136,16 +138,20 @@ export function FileList() {
                 onClick={handleSync}
                 disabled={currentFolder.status === 'syncing' || isSyncingFolder}
                 className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-text-secondary hover:bg-bg-tertiary disabled:opacity-50"
-                title="Sync folder"
+                title={currentFolder.status === 'cancelled' ? 'Continue sync' : 'Sync folder'}
               >
-                <RefreshCw
-                  className={`h-4 w-4 ${
-                    currentFolder.status === 'syncing' || isSyncingFolder
-                      ? 'animate-spin'
-                      : ''
-                  }`}
-                />
-                Sync
+                {currentFolder.status === 'cancelled' ? (
+                  <Play className="h-4 w-4" />
+                ) : (
+                  <RefreshCw
+                    className={`h-4 w-4 ${
+                      currentFolder.status === 'syncing' || isSyncingFolder
+                        ? 'animate-spin'
+                        : ''
+                    }`}
+                  />
+                )}
+                {currentFolder.status === 'cancelled' ? 'Continue' : 'Sync'}
               </button>
               <button
                 onClick={handleDeleteClick}
@@ -231,6 +237,8 @@ export function FileList() {
             selectedFileId={selectedFileId}
             onSelectFile={setSelectedFileId}
             isSyncing={isSyncing}
+            totalFiles={isSyncing ? syncProgress.total : currentFolder?.total_files}
+            processedFiles={isSyncing ? syncProgress.processed : currentFolder?.processed_files}
           />
         ) : (
           <table className="w-full">
@@ -284,9 +292,9 @@ export function FileList() {
         </div>
       )}
 
-      {viewMode === 'tree' && data && (
+      {viewMode === 'tree' && (
         <div className="border-t border-border px-4 py-2 text-xs text-text-muted">
-          {data.total} files total
+          {(isSyncing ? syncProgress.total : currentFolder?.total_files) ?? data?.total ?? 0} files total
         </div>
       )}
 

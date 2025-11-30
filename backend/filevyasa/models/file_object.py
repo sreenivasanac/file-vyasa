@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
-from filevyasa.models.enums import ExtractionStatus, FileCategory
+from filevyasa.models.enums import ExtractionStatus, FileCategory, FilenameQuality
 
 
 class FileObjectBase(BaseModel):
@@ -60,6 +60,14 @@ class FileObjectBase(BaseModel):
     )
     is_password_protected: bool = Field(
         default=False, description="Whether file is password protected"
+    )
+
+    # AI-suggested filename improvements
+    suggested_filename: Optional[str] = Field(
+        default=None, description="AI-suggested filename if current name is poor/meaningless"
+    )
+    filename_quality: Optional[FilenameQuality] = Field(
+        default=None, description="AI assessment of current filename quality"
     )
 
 
@@ -136,6 +144,10 @@ class FileObjectResponse(BaseModel):
     extraction_status: ExtractionStatus
     extraction_error: Optional[str]
     is_password_protected: bool
+
+    # AI-suggested filename improvements
+    suggested_filename: Optional[str]
+    filename_quality: Optional[FilenameQuality]
 
     scanned_at: datetime
     summarized_at: Optional[datetime]

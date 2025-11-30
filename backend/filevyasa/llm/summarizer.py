@@ -6,6 +6,7 @@ import structlog
 
 from filevyasa.config import settings
 from filevyasa.models.file_object import FileObject
+from filevyasa.models.enums import FilenameQuality
 
 logger = structlog.get_logger()
 
@@ -30,11 +31,18 @@ Additional Metadata:
 Please provide:
 1. A brief summary (2 lines max) capturing the essence - what it is and about.
 2. A detailed summary (4 lines max) with more context about content and purpose.
+3. Filename assessment: Evaluate the current filename and suggest a better one if needed.
+   - "good": Descriptive, meaningful name (e.g., "Q3_2024_Financial_Report.xlsx", "project_proposal_acme.docx")
+   - "acceptable": Adequate but could be improved (e.g., "report.docx", "notes.txt")
+   - "poor": Vague or unhelpful (e.g., "doc1.pdf", "file.docx", "new.txt")
+   - "meaningless": Arbitrary/auto-generated name (e.g., "Untitled.docx", "Document1.pdf", "download.pdf", "Copy of Copy of.xlsx")
 
 Respond in this exact JSON format:
 {{
     "brief_summary": "...",
-    "detailed_summary": "..."
+    "detailed_summary": "...",
+    "filename_quality": "good|acceptable|poor|meaningless",
+    "suggested_filename": "descriptive_name.ext"
 }}
 """
 
@@ -141,7 +149,7 @@ class Summarizer:
                     {"role": "user", "content": prompt}
                 ],
                 "temperature": 0.3,
-                "max_tokens": 500,
+                "max_tokens": 600,
             }
 
             # Only add response_format for providers that support it (OpenAI, etc.)
@@ -156,14 +164,20 @@ class Summarizer:
 
             # Parse response
             content = response.choices[0].message.content
-            result = self._parse_response(content)
+            result = self._parse_response(content, file_obj.extension)
 
             file_obj.ai_brief_summary = result.get("brief_summary", "")
             file_obj.ai_summary = result.get("detailed_summary", "")
+            file_obj.filename_quality = result.get("filename_quality")
+            file_obj.suggested_filename = result.get("suggested_filename")
             file_obj.llm_model = model_name  # Store which model was used
             file_obj.summarized_at = datetime.now()
 
-            logger.info("file_summarized", filename=file_obj.filename)
+            logger.info(
+                "file_summarized",
+                filename=file_obj.filename,
+                filename_quality=file_obj.filename_quality,
+            )
 
         except Exception as e:
             logger.error("summarization_failed", filename=file_obj.filename, error=str(e))
@@ -172,7 +186,7 @@ class Summarizer:
 
         return file_obj
 
-    def _parse_response(self, content: str) -> dict:
+    def _parse_response(self, content: str, file_extension: str) -> dict:
         """Parse JSON response from LLM.
 
         Handles various response formats:
@@ -183,9 +197,37 @@ class Summarizer:
         import json
         import re
 
+        valid_qualities = {"good", "acceptable", "poor", "meaningless"}
+
+        def normalize_result(data: dict, ext: str) -> dict:
+            """Normalize and validate parsed data."""
+            result = {
+                "brief_summary": data.get("brief_summary", ""),
+                "detailed_summary": data.get("detailed_summary", ""),
+                "filename_quality": None,
+                "suggested_filename": None,
+            }
+
+            # Handle filename quality
+            quality = str(data.get("filename_quality", "")).lower().strip()
+            if quality in valid_qualities:
+                result["filename_quality"] = FilenameQuality(quality)
+
+            # Handle suggested filename - ensure it has the right extension
+            suggested = data.get("suggested_filename")
+            if suggested and isinstance(suggested, str):
+                suggested = suggested.strip()
+                # Ensure suggested filename has the correct extension
+                if ext and not suggested.lower().endswith(f".{ext.lower()}"):
+                    suggested = f"{suggested.rsplit('.', 1)[0]}.{ext}" if '.' in suggested else f"{suggested}.{ext}"
+                result["suggested_filename"] = suggested
+
+            return result
+
         # Try direct JSON parsing first
         try:
-            return json.loads(content)
+            parsed = json.loads(content)
+            return normalize_result(parsed, file_extension)
         except json.JSONDecodeError:
             pass
 
@@ -193,7 +235,8 @@ class Summarizer:
         json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', content, re.DOTALL)
         if json_match:
             try:
-                return json.loads(json_match.group(1))
+                parsed = json.loads(json_match.group(1))
+                return normalize_result(parsed, file_extension)
             except json.JSONDecodeError:
                 pass
 
@@ -201,18 +244,24 @@ class Summarizer:
         json_match = re.search(r'\{[^{}]*"brief_summary"[^{}]*\}', content, re.DOTALL)
         if json_match:
             try:
-                return json.loads(json_match.group(0))
+                parsed = json.loads(json_match.group(0))
+                return normalize_result(parsed, file_extension)
             except json.JSONDecodeError:
                 pass
 
         # Try regex extraction of values
         brief_match = re.search(r'"brief_summary"\s*:\s*"([^"]*)"', content)
         detailed_match = re.search(r'"detailed_summary"\s*:\s*"([^"]*)"', content)
+        quality_match = re.search(r'"filename_quality"\s*:\s*"([^"]*)"', content)
+        suggested_match = re.search(r'"suggested_filename"\s*:\s*"([^"]*)"', content)
 
         if brief_match or detailed_match:
+            quality_val = quality_match.group(1).lower() if quality_match else None
             return {
                 "brief_summary": brief_match.group(1) if brief_match else "",
-                "detailed_summary": detailed_match.group(1) if detailed_match else ""
+                "detailed_summary": detailed_match.group(1) if detailed_match else "",
+                "filename_quality": FilenameQuality(quality_val) if quality_val in valid_qualities else None,
+                "suggested_filename": suggested_match.group(1) if suggested_match else None,
             }
 
         # Last resort: treat the whole content as a summary (cleaned)
@@ -222,7 +271,9 @@ class Summarizer:
 
         return {
             "brief_summary": lines[0] if lines else content[:100],
-            "detailed_summary": ' '.join(lines[:3]) if lines else content[:200]
+            "detailed_summary": ' '.join(lines[:3]) if lines else content[:200],
+            "filename_quality": None,
+            "suggested_filename": None,
         }
 
 

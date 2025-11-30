@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { openPath } from '@tauri-apps/plugin-opener';
 import {
   ChevronRight,
   ChevronDown,
@@ -7,6 +8,7 @@ import {
   CheckCircle,
   Loader,
   AlertCircle,
+  ExternalLink,
 } from 'lucide-react';
 import { FileIcon } from './FileIcon';
 import { cn } from '@/lib/utils';
@@ -28,6 +30,8 @@ interface FolderTreeProps {
   selectedFileId: string | null;
   onSelectFile: (fileId: string | null) => void;
   isSyncing: boolean;
+  totalFiles?: number;
+  processedFiles?: number;
 }
 
 function buildTree(files: FileObject[], rootPath: string): TreeNode {
@@ -108,6 +112,8 @@ export function FolderTree({
   selectedFileId,
   onSelectFile,
   isSyncing,
+  totalFiles,
+  processedFiles,
 }: FolderTreeProps) {
   const tree = useMemo(() => buildTree(files, rootPath), [files, rootPath]);
 
@@ -120,6 +126,8 @@ export function FolderTree({
         onSelectFile={onSelectFile}
         isSyncing={isSyncing}
         defaultExpanded
+        totalFiles={totalFiles}
+        processedFiles={processedFiles}
       />
     </div>
   );
@@ -132,6 +140,9 @@ interface TreeNodeComponentProps {
   onSelectFile: (fileId: string | null) => void;
   isSyncing: boolean;
   defaultExpanded?: boolean;
+  totalFiles?: number;
+  processedFiles?: number;
+  isParentSyncing?: boolean; // True if any ancestor folder is still syncing
 }
 
 function TreeNodeComponent({
@@ -141,11 +152,22 @@ function TreeNodeComponent({
   onSelectFile,
   isSyncing,
   defaultExpanded = false,
+  totalFiles,
+  processedFiles,
+  isParentSyncing = false,
 }: TreeNodeComponentProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
-  const isCompleted = node.fileCount > 0 && node.completedCount === node.fileCount;
-  const isProcessing = isSyncing && node.completedCount < node.fileCount;
+  // For root node (depth 0), use the actual folder totals if provided
+  const isRootNode = depth === 0;
+  const displayCount = isRootNode && totalFiles !== undefined ? totalFiles : node.fileCount;
+  const displayCompleted = isRootNode && processedFiles !== undefined ? processedFiles : node.completedCount;
+
+  const isCompleted = displayCount > 0 && displayCompleted === displayCount;
+  // A folder is processing if: it has known incomplete files, OR parent folder is syncing (may have files not yet in array)
+  const isProcessing = isSyncing && (displayCompleted < displayCount || isParentSyncing);
+  // Track if this folder or ancestors are syncing (to pass down to children)
+  const isFolderSyncing = isSyncing && (displayCompleted < displayCount || isParentSyncing);
   const isSelected = node.file?.id === selectedFileId;
 
   // Sort children: folders first, then files, alphabetically
@@ -158,13 +180,31 @@ function TreeNodeComponent({
     });
   }, [node.children]);
 
+  const handleOpenFolder = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await openPath(node.path);
+    } catch (err) {
+      console.error('Failed to open folder:', err);
+    }
+  };
+
+  const handleOpenFile = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await openPath(node.path);
+    } catch (err) {
+      console.error('Failed to open file:', err);
+    }
+  };
+
   if (node.isFolder) {
     return (
       <div>
         <div
           onClick={() => setIsExpanded(!isExpanded)}
           className={cn(
-            'flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 hover:bg-bg-tertiary',
+            'group flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 hover:bg-bg-tertiary',
             'text-sm text-text-primary'
           )}
           style={{ paddingLeft: `${depth * 16 + 8}px` }}
@@ -179,12 +219,20 @@ function TreeNodeComponent({
           ) : (
             <Folder className="h-4 w-4 text-yellow-500" />
           )}
-          <span className="flex-1 truncate">{node.name}</span>
+          <span className="truncate">{node.name}</span>
+          <button
+            onClick={handleOpenFolder}
+            className="hidden shrink-0 rounded p-1 text-text-muted hover:bg-bg-hover hover:text-text-primary group-hover:flex"
+            title="Open in Finder"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+          </button>
+          <div className="flex-1" /> {/* Spacer to push StatusIndicator to the right */}
           <StatusIndicator
             isCompleted={isCompleted}
             isProcessing={isProcessing}
-            count={node.fileCount}
-            completedCount={node.completedCount}
+            count={displayCount}
+            completedCount={displayCompleted}
           />
         </div>
         {isExpanded && (
@@ -197,6 +245,7 @@ function TreeNodeComponent({
                 selectedFileId={selectedFileId}
                 onSelectFile={onSelectFile}
                 isSyncing={isSyncing}
+                isParentSyncing={isFolderSyncing}
               />
             ))}
           </div>
@@ -210,7 +259,7 @@ function TreeNodeComponent({
     <div
       onClick={() => onSelectFile(isSelected ? null : node.file!.id)}
       className={cn(
-        'flex cursor-pointer items-center gap-2 rounded px-2 py-1.5',
+        'group flex cursor-pointer items-center gap-2 rounded px-2 py-1.5',
         'text-sm transition-colors',
         isSelected
           ? 'bg-accent/20 text-text-primary'
@@ -219,10 +268,18 @@ function TreeNodeComponent({
       style={{ paddingLeft: `${depth * 16 + 8}px` }}
     >
       <div className="w-4" /> {/* Spacer for alignment */}
-      <FileIcon category={node.file!.category} className="h-4 w-4" />
-      <span className="flex-1 truncate" title={node.name}>
+      <FileIcon category={node.file!.category} extension={node.file!.extension} className="h-4 w-4" />
+      <span className="truncate" title={node.name}>
         {node.name}
       </span>
+      <button
+        onClick={handleOpenFile}
+        className="hidden shrink-0 rounded p-1 text-text-muted hover:bg-bg-hover hover:text-text-primary group-hover:flex"
+        title="Open file"
+      >
+        <ExternalLink className="h-3.5 w-3.5" />
+      </button>
+      <div className="flex-1" /> {/* Spacer to push status to the right */}
       <FileStatusIndicator file={node.file!} isSyncing={isSyncing} />
     </div>
   );

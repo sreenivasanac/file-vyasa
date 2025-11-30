@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { openPath } from '@tauri-apps/plugin-opener';
 import {
   Folder,
   Clock,
@@ -9,6 +10,8 @@ import {
   Loader,
   AlertCircle,
   Plus,
+  ExternalLink,
+  Play,
 } from 'lucide-react';
 import { api } from '@/api/client';
 import { useAppStore } from '@/stores/appStore';
@@ -77,6 +80,15 @@ export function FolderList() {
     setFolderToDelete(folderId);
   };
 
+  const handleOpenFolder = async (e: React.MouseEvent, folderPath: string) => {
+    e.stopPropagation();
+    try {
+      await openPath(folderPath);
+    } catch (err) {
+      console.error('Failed to open folder:', err);
+    }
+  };
+
   const confirmDelete = async () => {
     if (!folderToDelete) return;
     setDeletingId(folderToDelete);
@@ -137,7 +149,16 @@ export function FolderList() {
               <div className="flex items-start gap-3 flex-1 min-w-0">
                 <Folder className="mt-0.5 h-5 w-5 flex-shrink-0 text-accent" />
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium text-text-primary">{folder.name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-text-primary">{folder.name}</p>
+                    <button
+                      onClick={(e) => handleOpenFolder(e, folder.root_path)}
+                      className="shrink-0 rounded p-1 text-text-muted hover:bg-bg-hover hover:text-text-primary"
+                      title="Open in Finder"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                   <p
                     className="mt-0.5 text-xs text-text-muted truncate"
                     title={folder.root_path}
@@ -170,16 +191,20 @@ export function FolderList() {
                   onClick={(e) => handleSync(e, folder)}
                   disabled={folder.status === 'syncing' || syncingId === folder.id}
                   className="flex items-center gap-1 rounded px-2 py-1 text-xs text-text-secondary hover:bg-bg-hover disabled:opacity-50"
-                  title="Sync folder"
+                  title={folder.status === 'cancelled' ? 'Continue sync' : 'Sync folder'}
                 >
-                  <RefreshCw
-                    className={`h-3 w-3 ${
-                      folder.status === 'syncing' || syncingId === folder.id
-                        ? 'animate-spin'
-                        : ''
-                    }`}
-                  />
-                  Sync
+                  {folder.status === 'cancelled' ? (
+                    <Play className="h-3 w-3" />
+                  ) : (
+                    <RefreshCw
+                      className={`h-3 w-3 ${
+                        folder.status === 'syncing' || syncingId === folder.id
+                          ? 'animate-spin'
+                          : ''
+                      }`}
+                    />
+                  )}
+                  {folder.status === 'cancelled' ? 'Continue' : 'Sync'}
                 </button>
                 <button
                   onClick={(e) => handleDelete(e, folder.id)}

@@ -40,7 +40,7 @@ export function FileDetail() {
       ) : file ? (
         <div className="flex-1 overflow-auto p-4">
           <div className="mb-6 flex items-start gap-3">
-            <FileIcon category={file.category} className="mt-1 h-8 w-8" />
+            <FileIcon category={file.category} extension={file.extension} className="mt-1 h-8 w-8" />
             <div className="min-w-0 flex-1">
               <h4 className="break-words font-medium text-text-primary">
                 {file.filename}

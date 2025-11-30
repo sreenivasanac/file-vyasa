@@ -95,6 +95,10 @@ class FileObjectTable(Base):
     ai_summary: Mapped[str] = mapped_column(Text, default="")
     llm_model: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
 
+    # AI-suggested filename improvements
+    suggested_filename: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    filename_quality: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+
     # Extraction status
     extraction_status: Mapped[str] = mapped_column(String(20), default="pending")
     extraction_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

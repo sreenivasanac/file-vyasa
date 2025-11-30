@@ -50,3 +50,12 @@ class ExtractionStatus(str, Enum):
     SUCCESS = "success"
     FAILED = "failed"
     SKIPPED = "skipped"
+
+
+class FilenameQuality(str, Enum):
+    """Quality assessment of a filename."""
+
+    GOOD = "good"              # Descriptive, meaningful name
+    ACCEPTABLE = "acceptable"  # Adequate but could be better
+    POOR = "poor"              # Vague or unhelpful name
+    MEANINGLESS = "meaningless"  # Arbitrary name (IMG_001, Untitled, etc.)

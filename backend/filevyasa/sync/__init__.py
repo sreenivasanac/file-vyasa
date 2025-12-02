@@ -1,6 +1,6 @@
 """Sync module - orchestrates folder synchronization."""
 
-from .service import SyncService
 from .processor import SyncProgress
+from .service import SyncService
 
 __all__ = ["SyncService", "SyncProgress"]

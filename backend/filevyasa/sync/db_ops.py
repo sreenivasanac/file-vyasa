@@ -30,7 +30,10 @@ def _is_enum_type(annotation) -> bool:
     origin = get_origin(annotation)
     if origin is Union:
         args = get_args(annotation)
-        return any(isinstance(arg, type) and issubclass(arg, Enum) for arg in args if arg is not type(None))
+        return any(
+            isinstance(arg, type) and issubclass(arg, Enum)
+            for arg in args if arg is not type(None)
+        )
     # Handle direct enum type
     return isinstance(annotation, type) and issubclass(annotation, Enum)
 

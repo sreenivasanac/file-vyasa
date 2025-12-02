@@ -66,7 +66,9 @@ class SyncService:
             existing_by_path = {f.path: f for f in all_db_files}
 
             # Scan filesystem
-            ignore_patterns = list(folder.ignore_patterns or []) + list(settings.default_ignore_patterns)
+            ignore_patterns = (
+                list(folder.ignore_patterns or []) + list(settings.default_ignore_patterns)
+            )
             scanner = Scanner(ignore_patterns=ignore_patterns, folder_id=self.folder_id)
             fs_files = scanner.scan_to_list(folder.root_path, recursive=True)
             fs_inodes = {f.inode for f in fs_files if f.inode}

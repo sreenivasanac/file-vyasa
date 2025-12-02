@@ -7,7 +7,6 @@ from typing import Callable, List, Optional, Tuple
 
 import structlog
 
-from filevyasa.config import settings
 from filevyasa.extractor import enrich_file_object
 from filevyasa.extractor.media_extractor import MediaTranscriber
 from filevyasa.llm import ImageDescriber, Summarizer
@@ -83,7 +82,7 @@ class FileProcessor:
         elif category_value in [FileCategory.AUDIO.value, FileCategory.VIDEO.value]:
             if self.transcriber:
                 file_obj = self.transcriber.transcribe(file_obj)
-                # Check if transcription was successful (content_preview has actual text, not error message)
+                # Check if transcription was successful (has actual text, not error)
                 has_transcription = (
                     file_obj.content_preview
                     and not file_obj.content_preview.startswith("[")
@@ -113,7 +112,9 @@ class FileProcessor:
 
         return file_obj
 
-    def _set_summary_from_preview(self, file_obj: FileObject, clear_model: bool = False) -> FileObject:
+    def _set_summary_from_preview(
+        self, file_obj: FileObject, clear_model: bool = False
+    ) -> FileObject:
         """Set AI summary fields from content preview for non-content files."""
         file_obj.ai_brief_summary = file_obj.content_preview
         file_obj.ai_summary = file_obj.content_preview

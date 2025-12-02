@@ -1,10 +1,15 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Cpu, Square, Play, AlertTriangle } from 'lucide-react';
+import { Cpu, Square, Play, AlertTriangle, FileText } from 'lucide-react';
 import { Spinner } from '@/components/common/Spinner';
 import { Button } from '@/components/common/Button';
 import { useAppStore } from '@/stores/appStore';
 import { api } from '@/api/client';
+
+interface ProcessingFile {
+  path: string;
+  filename: string;
+}
 
 export function SyncProgress() {
   const {
@@ -21,6 +26,7 @@ export function SyncProgress() {
   const [isCancelling, setIsCancelling] = useState(false);
   const [isContinuing, setIsContinuing] = useState(false);
   const [eta, setEta] = useState<string | null>(null);
+  const [processingFiles, setProcessingFiles] = useState<ProcessingFile[]>([]);
   const clearSyncTimingRef = useRef(clearSyncTiming);
   
   const currentFolder = folders.find((f) => f.id === currentFolderId);
@@ -49,20 +55,31 @@ export function SyncProgress() {
   });
 
   useEffect(() => {
-    if (!currentFolderId || !isSyncing) return;
+    if (!currentFolderId || !isSyncing) {
+      setProcessingFiles([]);
+      return;
+    }
 
     const pollInterval = setInterval(async () => {
       try {
-        const folder = await api.folders.get(currentFolderId);
+        // Fetch folder status and processing files in parallel
+        const [folder, processingData] = await Promise.all([
+          api.folders.get(currentFolderId),
+          api.folders.getProcessing(currentFolderId),
+        ]);
+
         setSyncProgress({
           total: folder.total_files,
           processed: folder.processed_files,
           failed: folder.failed_files,
         });
 
+        setProcessingFiles(processingData.processing_files);
+
         if (folder.status === 'idle' || folder.status === 'error' || folder.status === 'cancelled') {
           setIsSyncing(false);
           setIsCancelling(false);
+          setProcessingFiles([]);
           clearSyncTimingRef.current();
           // Refresh folders list and files
           queryClient.invalidateQueries({ queryKey: ['folders'] });
@@ -237,6 +254,34 @@ export function SyncProgress() {
         {eta && <span className="text-text-secondary">{eta}</span>}
         <span>{progress}%</span>
       </div>
+
+      {/* Currently processing files */}
+      {processingFiles.length > 0 && (
+        <div className="mt-3 border-t border-border pt-3">
+          <div className="mb-2 flex items-center gap-1.5 text-xs text-text-muted">
+            <FileText className="h-3 w-3" />
+            <span>Currently processing:</span>
+          </div>
+          <div className="max-h-24 overflow-y-auto space-y-1">
+            {processingFiles.slice(0, 5).map((file) => (
+              <div
+                key={file.path}
+                className="flex items-center gap-2 text-xs text-text-secondary truncate"
+              >
+                <Spinner size="xs" className="text-accent flex-shrink-0" />
+                <span className="truncate" title={file.path}>
+                  {file.filename}
+                </span>
+              </div>
+            ))}
+            {processingFiles.length > 5 && (
+              <div className="text-xs text-text-muted">
+                +{processingFiles.length - 5} more files...
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

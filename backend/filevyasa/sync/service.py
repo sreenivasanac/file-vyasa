@@ -15,7 +15,13 @@ from filevyasa.models.file_object import FileObject
 from filevyasa.scanner import Scanner
 
 from .db_ops import create_file_record, update_file_record
-from .processor import FileProcessor, SyncProgress, process_files_parallel
+from .processor import (
+    CancellationManager,
+    FileProcessor,
+    ProcessingTracker,
+    SyncProgress,
+    process_files_parallel,
+)
 
 logger = structlog.get_logger()
 
@@ -38,6 +44,9 @@ class SyncService:
 
     def run(self):
         """Execute folder sync. Call this from a background task."""
+        # Reset cancellation flag at the start of sync
+        CancellationManager.reset(self.folder_id)
+
         session = get_session()
 
         try:
@@ -114,7 +123,8 @@ class SyncService:
 
                 process_files_parallel(
                     files_to_process, processor, self.progress,
-                    on_file_complete, is_cancelled, workers
+                    on_file_complete, is_cancelled, workers,
+                    folder_id=self.folder_id
                 )
 
                 # Final batch commit
@@ -140,6 +150,10 @@ class SyncService:
             folder.failed_files = self.progress.failed
             session.commit()
 
+            # Clean up processing tracker and cancellation flag
+            ProcessingTracker.remove(self.folder_id)
+            CancellationManager.cleanup(self.folder_id)
+
             logger.info(
                 "sync_complete",
                 folder_id=self.folder_id,
@@ -157,6 +171,9 @@ class SyncService:
             if folder:
                 folder.status = FolderStatus.ERROR.value
                 session.commit()
+            # Clean up processing tracker and cancellation flag on error
+            ProcessingTracker.remove(self.folder_id)
+            CancellationManager.cleanup(self.folder_id)
         finally:
             session.close()
 

@@ -18,7 +18,7 @@ from filevyasa.models.folder import (
     MonitoredFolderCreate,
     MonitoredFolderResponse,
 )
-from filevyasa.sync import SyncService
+from filevyasa.sync import CancellationManager, ProcessingTracker, SyncService
 
 logger = structlog.get_logger()
 
@@ -326,7 +326,14 @@ async def sync_folder(
 
 @router.post("/{folder_id}/cancel")
 async def cancel_sync(folder_id: str):
-    """Cancel an ongoing sync operation."""
+    """Cancel an ongoing sync operation.
+
+    Sets both the in-memory cancellation flag (for immediate response)
+    and the database status (for persistence).
+    """
+    # Signal cancellation immediately via in-memory flag
+    CancellationManager.cancel(folder_id)
+
     session = get_session()
 
     folder = session.query(MonitoredFolderTable).filter_by(id=folder_id).first()
@@ -340,3 +347,21 @@ async def cancel_sync(folder_id: str):
 
     session.close()
     return {"folder_id": folder_id, "status": "cancelled"}
+
+
+@router.get("/{folder_id}/processing")
+async def get_processing_files(folder_id: str):
+    """Get the list of files currently being processed for a folder.
+
+    Returns a list of files that are actively being processed during sync.
+    This enables real-time UI updates showing which files are being worked on.
+    """
+    session = get_session()
+    folder = session.query(MonitoredFolderTable).filter_by(id=folder_id).first()
+    session.close()
+
+    if not folder:
+        raise HTTPException(status_code=404, detail=f"Folder not found: {folder_id}")
+
+    processing_files = ProcessingTracker.get_processing_files(folder_id)
+    return {"folder_id": folder_id, "processing_files": processing_files}

@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from filevyasa.config import settings, update_yaml_setting
+from filevyasa.config import settings, update_local_config_setting
 
 router = APIRouter()
 
@@ -107,12 +107,12 @@ async def update_google_config(config: GoogleConfigRequest):
     """
     Update Google Workspace credentials configuration.
 
-    Persists the credentials path to settings.yaml.
+    Persists the credentials path to .filevyasa/local_config.json.
     """
     if config.credentials_path is not None:
         new_path = config.credentials_path if config.credentials_path else None
         settings.google_credentials_path = new_path
-        update_yaml_setting("google", "credentials_path", new_path)
+        update_local_config_setting("google_credentials_path", new_path)
 
     return GoogleConfigResponse(
         credentials_configured=bool(settings.google_credentials_path),

@@ -1,6 +1,6 @@
 """Sync module - orchestrates folder synchronization."""
 
-from .processor import SyncProgress
+from .processor import CancellationManager, ProcessingTracker, SyncProgress
 from .service import SyncService
 
-__all__ = ["SyncService", "SyncProgress"]
+__all__ = ["SyncService", "SyncProgress", "ProcessingTracker", "CancellationManager"]

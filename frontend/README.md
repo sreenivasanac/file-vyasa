@@ -1,89 +1,64 @@
 # FileVyasa Frontend
 
-Tauri desktop application frontend for FileVyasa - an AI-powered local file organizer.
+Cross-platform desktop app built with Tauri + React.
 
 ## Tech Stack
 
-- **Framework**: Tauri 2.x + Vite + React 18 (TypeScript)
+- **Framework**: Tauri 2.x + Vite + React 19 (TypeScript)
 - **Styling**: Tailwind CSS v4 (dark theme)
-- **State Management**: Zustand
-- **Data Fetching**: TanStack Query (React Query)
-- **Icons**: Lucide React
-- **UI Components**: Radix UI primitives
+- **State**: Zustand + TanStack Query
+- **UI**: Radix UI primitives + Lucide icons
 
-## Prerequisites
+## Quick Start
 
-- Node.js 18+
-- pnpm
-- Rust (for Tauri)
-- Backend server running on `http://127.0.0.1:8000`
+```bash
+pnpm install
+pnpm tauri:dev
+```
 
-## Getting Started
-
-1. Install dependencies:
-   ```bash
-   pnpm install
-   ```
-
-2. Start the development server (frontend only):
-   ```bash
-   pnpm dev
-   ```
-
-3. Start Tauri development mode (opens desktop app):
-   ```bash
-   pnpm tauri:dev
-   ```
+Requires the backend running at `http://127.0.0.1:8000`.
 
 ## Building
 
-Build for production:
 ```bash
 pnpm tauri:build
 ```
 
-The built application will be available in:
+Outputs:
 - macOS: `src-tauri/target/release/bundle/macos/FileVyasa.app`
-- Windows: `src-tauri/target/release/bundle/msi/` or `src-tauri/target/release/bundle/nsis/`
-- Linux: `src-tauri/target/release/bundle/appimage/` or `src-tauri/target/release/bundle/deb/`
+- Windows: `src-tauri/target/release/bundle/msi/`
+- Linux: `src-tauri/target/release/bundle/appimage/`
 
 ## Project Structure
 
 ```
 frontend/
 ├── src/
-│   ├── api/              # API client for backend communication
-│   ├── components/       # React components
-│   │   ├── common/       # Reusable UI components (Button, Badge, Spinner)
-│   │   ├── files/        # File list and detail views
-│   │   ├── layout/       # Layout components (Sidebar, Header)
-│   │   ├── scan/         # Scan-related components
-│   │   └── settings/     # Settings panel
-│   ├── lib/              # Utility functions
-│   ├── stores/           # Zustand state stores
-│   ├── types/            # TypeScript type definitions
-│   ├── App.tsx           # Main app component
-│   └── main.tsx          # Entry point
-├── src-tauri/            # Tauri (Rust) backend
-│   ├── src/              # Rust source code
-│   ├── Cargo.toml        # Rust dependencies
-│   └── tauri.conf.json   # Tauri configuration
-└── package.json
+│   ├── api/           # Backend API client
+│   ├── components/
+│   │   ├── common/    # Button, Badge, Spinner
+│   │   ├── files/     # File list, detail views
+│   │   ├── folders/   # Folder management
+│   │   ├── layout/    # Sidebar, Header
+│   │   └── settings/  # Settings panel
+│   ├── stores/        # Zustand stores
+│   └── types/         # TypeScript definitions
+└── src-tauri/         # Tauri Rust backend
 ```
 
-## Features (v1.1 & v1.2)
+## Features
 
-- **Folder Scanner**: Select a folder and scan all files
-- **File List**: View scanned files with sorting and filtering
-- **AI Summaries**: View AI-generated summaries for each file
-- **File Details**: Click a file to see detailed metadata, EXIF data, and content preview
-- **Category Filters**: Filter by file category (Document, Image, Video, etc.)
-- **Search**: Search files by filename
-- **Recent Scans**: View and re-open previous scan sessions
-- **Settings**: Configure LLM provider, model, and API key
+- **Folder Management** — Add/remove folders to monitor
+- **File Browser** — List view with sorting, filtering, search
+- **File Details** — Metadata, EXIF data, content preview, AI summary
+- **Category Filters** — Filter by Document, Image, Media, Code, etc.
+- **Settings** — Configure LLM provider and model
 
-## Development Notes
+## Development
 
-- The backend must be running for the app to function
-- Backend API is expected at `http://127.0.0.1:8000/api`
-- The app uses Tauri's dialog plugin for native folder selection
+```bash
+pnpm dev        # Web-only dev server
+pnpm tauri:dev  # Full desktop app
+pnpm lint       # ESLint
+pnpm build      # Production build
+```

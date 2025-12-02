@@ -1,117 +1,95 @@
 # FileVyasa Backend
 
-AI-Powered Local File Organizer - Python Backend Service
+Python FastAPI backend service for FileVyasa.
 
-## Overview
+## What It Does
 
-This is the backend service for FileVyasa, providing:
-- Directory scanning and file discovery
-- Content extraction (text, documents, images)
-- AI-powered file summarization via LiteLLM
-- RESTful API for frontend integration
-- SQLite-based persistence
+- **Folder Monitoring** — Track folders and detect file changes on re-sync
+- **Content Extraction** — Extract text/metadata from 30+ file types
+- **AI Features** — Document summarization, image description, media transcription
+- **REST API** — Endpoints for the frontend desktop app
 
 ## Quick Start
 
-### Setup
-
 ```bash
-# Create virtual environment and install dependencies
-uv venv .venv
-uv pip install -e ".[dev]"
-
-# Copy environment template and add your API key
-cp .env.example .env
-# Edit .env with your LLM API key
-```
-
-### Configuration
-
-**Secrets** (`.env` file - keep private):
-```
-FILEVYASA_LLM_API_KEY=your-openai-api-key
-```
-
-**Non-secret settings** (`config/settings.yaml`):
-```yaml
-app:
-  debug: false
-api:
-  host: 127.0.0.1
-  port: 8000
-llm:
-  provider: openai
-  model: gpt-4o-mini
-```
-
-Environment variables override YAML settings when set.
-
-### Running
-
-```bash
-# Run the server
+uv sync
 uv run python run.py
-
-# Or using the module
-uv run python -m filevyasa
 ```
 
-The API will be available at `http://127.0.0.1:8000`.
+API runs at `http://127.0.0.1:8000`. Visit `/docs` for Swagger UI.
 
-### API Documentation
+## Configuration
 
-Once running, visit:
-- Swagger UI: http://127.0.0.1:8000/docs
-- ReDoc: http://127.0.0.1:8000/redoc
+**LLM API Key** (`.env` or environment variable):
+```bash
+export FILEVYASA_LLM_API_KEY=your-key-here
+```
 
-## API Endpoints
+**Settings** (`config/settings.yaml`):
+```yaml
+llm:
+  provider: ollama      # or openai, anthropic
+  model: llama3.2
+  api_base: http://localhost:11434
+```
 
-### Folder Operations
+## API Overview
 
-- `POST /api/folders` - Add a folder to monitor (auto-syncs)
-- `GET /api/folders` - List all monitored folders
-- `GET /api/folders/{id}` - Get folder details
-- `DELETE /api/folders/{id}` - Remove folder from monitoring
-- `POST /api/folders/{id}/sync` - Sync folder (detect changes)
-- `POST /api/folders/{id}/cancel` - Cancel ongoing sync
+### Folders
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/folders` | Add folder to monitor |
+| GET | `/api/folders` | List monitored folders |
+| POST | `/api/folders/{id}/sync` | Re-sync folder |
+| DELETE | `/api/folders/{id}` | Remove folder |
 
-### File Operations
+### Files
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/files/` | List files (with filtering) |
+| GET | `/api/files/{id}` | Get file details |
+| GET | `/api/files/categories/stats` | Category statistics |
 
-- `GET /api/files/` - List files with filtering (use `folder_id` param)
-- `GET /api/files/{file_id}` - Get file details
-- `GET /api/files/categories/stats` - Get category statistics
-- `GET /api/files/extensions/stats` - Get extension statistics
+### Config
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/config/` | Get current settings |
+| POST | `/api/config/llm` | Update LLM settings |
+| GET | `/api/config/supported-extensions` | List supported types |
 
-### Configuration
+## Architecture
 
-- `GET /api/config/` - Get current configuration
-- `POST /api/config/llm` - Update LLM settings
-- `GET /api/config/supported-extensions` - List supported file types
+```
+filevyasa/
+├── api/           # FastAPI routes
+├── db/            # SQLite persistence
+├── extractor/     # Content extractors by file type
+├── llm/           # Summarizer, ImageDescriber
+├── scanner/       # Directory scanning
+├── sync/          # Folder sync orchestration
+└── models/        # Pydantic schemas
+```
 
-## Testing
+### Extractors
+
+Each file type has a dedicated extractor:
+- **TextExtractor** — Plain text, markdown
+- **PDFExtractor** — PDF with OCR fallback
+- **OfficeExtractor** — DOCX, XLSX, PPTX
+- **ImageExtractor** — EXIF metadata extraction
+- **MediaExtractor** — Audio/video metadata, Whisper transcription
+- **NotebookExtractor** — Jupyter notebooks
+- **CodeExtractor** — Source code files (metadata only)
+
+## Development
 
 ```bash
+# Install with dev dependencies
+uv sync --dev
+
+# Run linter
+uv run ruff check .
+
+# Run tests
 uv run pytest tests/ -v
 ```
-
-## Project Structure
-
-```
-backend/
-├── filevyasa/
-│   ├── api/           # FastAPI routes and app
-│   ├── db/            # SQLite database layer
-│   ├── extractor/     # Content extraction modules
-│   ├── llm/           # LLM summarization
-│   ├── models/        # Pydantic models
-│   ├── scanner/       # Directory scanning
-│   └── config.py      # Settings management
-├── tests/             # Test suite
-├── pyproject.toml     # Project configuration
-└── run.py             # Server entry point
-```
-
-## Version
-
-- v1.1: Basic scan, extraction, and summarization
-- v1.2: FileObject schema, SQLite persistence, filtering

@@ -12,7 +12,7 @@ from filevyasa.db.connection import init_db
 
 def _configure_logging():
     """Configure logging to suppress noisy third-party warnings.
-    
+
     pdfminer warnings cannot be fixed at the code level - they indicate:
     - FontBBox: Malformed PDFs with incomplete font descriptors (common in Office exports)
     - Paint color: Non-standard color space definitions in PDFs

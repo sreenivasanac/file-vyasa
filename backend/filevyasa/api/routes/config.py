@@ -153,7 +153,8 @@ async def verify_google_credentials():
     except ImportError:
         return GoogleVerifyResponse(
             success=False,
-            message="Google API libraries not installed. Install with: pip install google-api-python-client google-auth"
+            message="Google API libraries not installed. "
+            "Install with: pip install google-api-python-client google-auth"
         )
 
     try:

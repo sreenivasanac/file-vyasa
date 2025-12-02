@@ -5,8 +5,8 @@ from datetime import datetime
 import structlog
 
 from filevyasa.config import settings
-from filevyasa.models.file_object import FileObject
 from filevyasa.models.enums import FilenameQuality
+from filevyasa.models.file_object import FileObject
 
 logger = structlog.get_logger()
 
@@ -32,10 +32,10 @@ Please provide:
 1. A brief summary (2 lines max) capturing the essence - what it is and about.
 2. A detailed summary (4 lines max) with more context about content and purpose.
 3. Filename assessment: Evaluate the current filename and suggest a better one if needed.
-   - "good": Descriptive, meaningful name (e.g., "Q3_2024_Financial_Report.xlsx", "project_proposal_acme.docx")
+   - "good": Descriptive, meaningful name (e.g., "Q3_2024_Financial_Report.xlsx")
    - "acceptable": Adequate but could be improved (e.g., "report.docx", "notes.txt")
    - "poor": Vague or unhelpful (e.g., "doc1.pdf", "file.docx", "new.txt")
-   - "meaningless": Arbitrary/auto-generated name (e.g., "Untitled.docx", "Document1.pdf", "download.pdf", "Copy of Copy of.xlsx")
+   - "meaningless": Arbitrary/auto-generated name (e.g., "Untitled.docx", "Document1.pdf")
 
 Respond in this exact JSON format:
 {{
@@ -219,7 +219,8 @@ class Summarizer:
                 suggested = suggested.strip()
                 # Ensure suggested filename has the correct extension
                 if ext and not suggested.lower().endswith(f".{ext.lower()}"):
-                    suggested = f"{suggested.rsplit('.', 1)[0]}.{ext}" if '.' in suggested else f"{suggested}.{ext}"
+                    base = suggested.rsplit('.', 1)[0] if '.' in suggested else suggested
+                    suggested = f"{base}.{ext}"
                 result["suggested_filename"] = suggested
 
             return result
@@ -260,7 +261,9 @@ class Summarizer:
             return {
                 "brief_summary": brief_match.group(1) if brief_match else "",
                 "detailed_summary": detailed_match.group(1) if detailed_match else "",
-                "filename_quality": FilenameQuality(quality_val) if quality_val in valid_qualities else None,
+                "filename_quality": (
+                    FilenameQuality(quality_val) if quality_val in valid_qualities else None
+                ),
                 "suggested_filename": suggested_match.group(1) if suggested_match else None,
             }
 

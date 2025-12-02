@@ -7,8 +7,8 @@ from pathlib import Path
 
 import structlog
 
-from filevyasa.models.file_object import FileObject
 from filevyasa.models.enums import FilenameQuality
+from filevyasa.models.file_object import FileObject
 
 logger = structlog.get_logger()
 
@@ -22,17 +22,17 @@ Provide:
 2. A detailed description (2-4 sentences): Describe the scene, notable objects,
    colors, composition, and any relevant context.
 3. Filename assessment: Evaluate the current filename and suggest a better one if needed.
-   - "good": Descriptive, meaningful name (e.g., "sunset_beach_hawaii_2024.jpg", "family_reunion_thanksgiving.png")
-   - "acceptable": Adequate but could be improved (e.g., "beach_photo.jpg", "screenshot.png")
+   - "good": Descriptive, meaningful name (e.g., "sunset_beach_hawaii_2024.jpg")
+   - "acceptable": Adequate but could be improved (e.g., "beach_photo.jpg")
    - "poor": Vague or unhelpful (e.g., "photo1.jpg", "image.png", "pic.jpg")
-   - "meaningless": Arbitrary/auto-generated name (e.g., "IMG_0001.jpg", "DSC_1234.png", "Untitled.png", "download.jpg", "Screen Shot 2024-01-01.png")
+   - "meaningless": Arbitrary/auto-generated name (e.g., "IMG_0001.jpg", "DSC_1234.png")
 
 Respond in this exact JSON format:
 {{
     "brief_summary": "...",
     "detailed_summary": "...",
     "filename_quality": "good|acceptable|poor|meaningless",
-    "suggested_filename": "descriptive_name.ext (always provide a suggestion based on image content)"
+    "suggested_filename": "descriptive_name.ext (based on image content)"
 }}
 """
 
@@ -194,7 +194,8 @@ class ImageDescriber:
                 suggested = suggested.strip()
                 # Ensure suggested filename has the correct extension
                 if ext and not suggested.lower().endswith(f".{ext.lower()}"):
-                    suggested = f"{suggested.rsplit('.', 1)[0]}.{ext}" if '.' in suggested else f"{suggested}.{ext}"
+                    base = suggested.rsplit('.', 1)[0] if '.' in suggested else suggested
+                    suggested = f"{base}.{ext}"
                 result["suggested_filename"] = suggested
 
             return result
@@ -231,7 +232,9 @@ class ImageDescriber:
             return {
                 "brief_summary": brief_match.group(1) if brief_match else "",
                 "detailed_summary": detailed_match.group(1) if detailed_match else "",
-                "filename_quality": FilenameQuality(quality_val) if quality_val in valid_qualities else None,
+                "filename_quality": (
+                    FilenameQuality(quality_val) if quality_val in valid_qualities else None
+                ),
                 "suggested_filename": suggested_match.group(1) if suggested_match else None,
             }
 

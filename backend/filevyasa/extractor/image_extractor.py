@@ -55,7 +55,7 @@ class ImageExtractor(BaseExtractor):
 
     def _extract_exif(self, file_path: Path) -> Dict[str, Any]:
         """Extract EXIF metadata from an image.
-        
+
         Uses Pillow for WebP files (better handling, no warnings for missing EXIF)
         and exifread for other formats (broader EXIF tag support).
         """

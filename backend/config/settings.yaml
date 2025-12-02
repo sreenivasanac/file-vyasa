@@ -54,9 +54,11 @@ extraction:
 
 google:
   # Path to Google service account credentials JSON file
-  # Can also be set via FILEVYASA_GOOGLE_CREDENTIALS_PATH environment variable
+  # Priority: FILEVYASA_GOOGLE_CREDENTIALS_PATH env var > .filevyasa/local_config.json > this file
+  # Note: User-configured paths are now saved to .filevyasa/local_config.json
   # Documents must be shared with the service account email for access
   credentials_path: null
+
 scan:
   default_ignore_patterns:
   - .git
@@ -67,3 +69,13 @@ scan:
   - '*.pyc'
   - .venv
   - venv
+
+sync:
+  # Number of parallel workers for content extraction
+  extraction_workers: 8
+  # Number of parallel workers for AI processing
+  ai_workers: 4
+  # Batch size for database operations (smaller = more responsive UI, 1 = per-file updates)
+  db_batch_size: 1
+  # Enable parallel processing during sync
+  enable_parallel: true

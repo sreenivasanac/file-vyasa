@@ -17,7 +17,11 @@ class ImageExtractor(BaseExtractor):
     def supported_extensions(cls) -> list[str]:
         return [
             "jpg", "jpeg", "png", "gif", "bmp", "tiff", "tif",
-            "webp", "heic", "heif", "ico", "svg"
+            "webp", "heic", "heif", "ico", "svg",
+            # Portable image formats
+            "ppm", "pgm", "pbm",
+            # Additional formats
+            "psd", "avif",
         ]
 
     def extract(self, file_path: Path) -> Tuple[str, Dict[str, Any]]:

@@ -41,11 +41,12 @@ class NonContentExtractor(BaseExtractor):
 
 
 class CodeExtractor(NonContentExtractor):
-    """Extractor for code/script related files. Skips content extraction."""
+    """Extractor for code/script and code-related files. Skips content extraction."""
 
     @classmethod
     def supported_extensions(cls) -> List[str]:
         return [
+            # Core languages
             "py", "js", "ts", "jsx", "tsx",
             "css", "scss", "less", "sass",
             "php", "rb", "go", "rs", "java",
@@ -55,6 +56,40 @@ class CodeExtractor(NonContentExtractor):
             "sql", "r", "lua", "pl", "pm",
             "vue", "svelte",
             "json",
+            # Config/data formats
+            "yaml", "yml", "env", "jsonl",
+            # JS/TS ecosystem variants
+            "cjs", "cts", "mjs", "mts", "flow",
+            # C/C++ variants
+            "cc", "cxx", "hxx",
+            # Python ecosystem
+            "pyi", "pyx", "pxd", "pxi",
+            # Scientific/HPC
+            "f", "f90", "f95", "cu", "cuh", "m",
+            # Build/schema files
+            "proto", "cmake", "makefile", "mk", "prisma", "g4", "gbnf",
+            # Other languages
+            "coffee", "nix", "applescript",
+            # Windows scripts
+            "bat", "ps1", "cmd",
+            # Code packages
+            "jar", "whl", "egg", "deb",
+            # Compiled/binary code artifacts
+            "pyc", "pyo", "so", "dylib", "node", "wasm",
+            # ML model files
+            "onnx", "pt", "pth", "pb",
+            # Data formats used in code
+            "parquet", "feather", "joblib", "arff", "mat", "fig",
+            # Translation files
+            "mo", "po",
+            # Dev artifacts
+            "map", "sample", "dat", "bin", "bak", "snap",
+            # GIS/Geospatial
+            "shp", "shx", "dbf", "las", "laz", "gpx", "kml", "kmz", "pcd",
+            # CAD/3D models
+            "stl", "obj", "ply", "3ds", "ipt", "iam",
+            # Certificates/keys
+            "pem", "crt", "cer", "p12", "pfx",
         ]
 
 

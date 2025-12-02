@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 
 interface SpinnerProps {
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
   className?: string;
 }
 
@@ -11,6 +11,7 @@ export function Spinner({ size = 'md', className }: SpinnerProps) {
       className={cn(
         'animate-spin rounded-full border-2 border-current border-t-transparent',
         {
+          'h-3 w-3 border-[1.5px]': size === 'xs',
           'h-4 w-4': size === 'sm',
           'h-6 w-6': size === 'md',
           'h-8 w-8': size === 'lg',

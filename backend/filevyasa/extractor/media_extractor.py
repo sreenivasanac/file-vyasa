@@ -21,8 +21,16 @@ logger = structlog.get_logger()
 
 
 # Shared constants for supported media extensions
-AUDIO_EXTENSIONS: List[str] = ["mp3", "wav", "m4a", "flac", "aac", "ogg", "wma"]
-VIDEO_EXTENSIONS: List[str] = ["mp4", "mov", "avi", "mkv", "wmv", "flv", "m4v", "webm"]
+AUDIO_EXTENSIONS: List[str] = [
+    "mp3", "wav", "m4a", "flac", "aac", "ogg", "wma",
+    # Additional audio formats
+    "opus", "amr", "aiff", "aif", "au",
+]
+VIDEO_EXTENSIONS: List[str] = [
+    "mp4", "mov", "avi", "mkv", "wmv", "flv", "m4v", "webm",
+    # Additional video formats (ffmpeg can extract audio)
+    "mpg", "mpeg", "3gp", "3g2", "asf", "vob", "ts", "mts", "m2ts", "ogv",
+]
 
 
 class MediaExtractor(BaseExtractor):

@@ -1,11 +1,48 @@
 """Application configuration settings."""
 
+import json
 from pathlib import Path
 from typing import Optional
 
 import yaml
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def get_local_config_path() -> Path:
+    """Get the path to the local_config.json file in .filevyasa directory."""
+    return Path.cwd() / ".filevyasa" / "local_config.json"
+
+
+def load_local_config() -> dict:
+    """Load configuration from local_config.json file."""
+    config_path = get_local_config_path()
+    if config_path.exists():
+        with open(config_path) as f:
+            return json.load(f) or {}
+    return {}
+
+
+def save_local_config(config: dict) -> bool:
+    """Save configuration to local_config.json file. Returns True on success."""
+    config_path = get_local_config_path()
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(config_path, "w") as f:
+        json.dump(config, f, indent=2)
+    return True
+
+
+def update_local_config_setting(key: str, value) -> bool:
+    """Update a specific setting in the local_config.json file and save it."""
+    config = load_local_config()
+    config[key] = value
+    return save_local_config(config)
+
+
+def get_local_config_setting(key: str, default=None):
+    """Get a specific setting from local_config.json."""
+    config = load_local_config()
+    return config.get(key, default)
 
 
 def get_config_path() -> Path | None:
@@ -51,6 +88,9 @@ def update_yaml_setting(section: str, key: str, value) -> bool:
 # Load YAML config once at module import
 _yaml_config = load_yaml_config()
 
+# Load local config once at module import
+_local_config = load_local_config()
+
 
 class Settings(BaseSettings):
     """
@@ -59,8 +99,9 @@ class Settings(BaseSettings):
     Priority (highest to lowest):
     1. Environment variables (FILEVYASA_* prefix)
     2. .env file
-    3. config/settings.yaml
-    4. Default values
+    3. .filevyasa/local_config.json (user-specific settings)
+    4. config/settings.yaml
+    5. Default values
     """
 
     model_config = SettingsConfigDict(
@@ -105,8 +146,10 @@ class Settings(BaseSettings):
     )
 
     # Google Workspace API settings
+    # Priority: env var > local_config.json > settings.yaml
     google_credentials_path: Optional[str] = Field(
-        default=_yaml_config.get("google", {}).get("credentials_path"),
+        default=_local_config.get("google_credentials_path")
+        or _yaml_config.get("google", {}).get("credentials_path"),
         description="Path to Google service account credentials JSON file"
     )
 
@@ -135,8 +178,8 @@ class Settings(BaseSettings):
         description="Number of parallel workers for AI processing"
     )
     sync_db_batch_size: int = Field(
-        default=_yaml_config.get("sync", {}).get("db_batch_size", 10),
-        description="Batch size for database operations (smaller = more responsive UI)"
+        default=_yaml_config.get("sync", {}).get("db_batch_size", 1),
+        description="Batch size for DB operations (1 = per-file updates, more responsive UI)"
     )
     sync_enable_parallel: bool = Field(
         default=_yaml_config.get("sync", {}).get("enable_parallel", True),

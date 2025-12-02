@@ -11,7 +11,13 @@ class TextExtractor(BaseExtractor):
 
     @classmethod
     def supported_extensions(cls) -> list[str]:
-        return ["txt", "md", "markdown", "rst", "log", "ini", "cfg", "conf"]
+        return [
+            "txt", "md", "markdown", "rst", "log", "ini", "cfg", "conf",
+            # Subtitles
+            "srt", "vtt",
+            # Document markup
+            "tex", "bib",
+        ]
 
     def extract(self, file_path: Path) -> Tuple[str, Dict[str, Any]]:
         """Extract content from text files."""

@@ -75,6 +75,11 @@ export const api = {
 
     cancel: (folderId: string): Promise<{ folder_id: string; status: string }> =>
       request(`/folders/${folderId}/cancel`, { method: 'POST' }),
+
+    getProcessing: (folderId: string): Promise<{
+      folder_id: string;
+      processing_files: Array<{ path: string; filename: string }>;
+    }> => request(`/folders/${folderId}/processing`),
   },
 
   // File endpoints

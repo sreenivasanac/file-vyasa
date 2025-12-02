@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, BigInteger, Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -65,6 +65,10 @@ class FileObjectTable(Base):
     filename: Mapped[str] = mapped_column(String(512), nullable=False)
     extension: Mapped[str] = mapped_column(String(32), default="")
     mime_type: Mapped[str] = mapped_column(String(128), default="")
+    # Inode for tracking files across renames/moves
+    # Cross-platform: Unix st_ino, Windows file index
+    # Note: Inode can be reused after file deletion, but rare and acceptable
+    inode: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True, index=True)
 
     # File attributes
     size_bytes: Mapped[int] = mapped_column(Integer, default=0)
@@ -80,11 +84,6 @@ class FileObjectTable(Base):
     # Content
     content_preview: Mapped[str] = mapped_column(Text, default="")
     content_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
-
-    # Transcription for audio/video files
-    transcription: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    # Duration in seconds
-    transcription_duration: Mapped[Optional[float]] = mapped_column(nullable=True)
 
     # Metadata as JSON
     exif_data: Mapped[dict] = mapped_column(JSON, default=dict)

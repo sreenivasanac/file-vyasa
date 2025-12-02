@@ -54,9 +54,19 @@ class ImageExtractor(BaseExtractor):
         return content, metadata
 
     def _extract_exif(self, file_path: Path) -> Dict[str, Any]:
-        """Extract EXIF metadata from an image."""
+        """Extract EXIF metadata from an image.
+        
+        Uses Pillow for WebP files (better handling, no warnings for missing EXIF)
+        and exifread for other formats (broader EXIF tag support).
+        """
         exif_data = {}
+        ext = file_path.suffix.lower()
 
+        # Use Pillow for WebP files - exifread logs warnings for WebP without EXIF
+        if ext == ".webp":
+            return self._extract_exif_pillow(file_path)
+
+        # Use exifread for other formats (better EXIF tag coverage)
         try:
             import exifread
             with open(str(file_path), "rb") as f:
@@ -71,5 +81,27 @@ class ImageExtractor(BaseExtractor):
 
         except Exception as e:
             logger.debug("exifread_failed", path=str(file_path), error=str(e))
+
+        return exif_data
+
+    def _extract_exif_pillow(self, file_path: Path) -> Dict[str, Any]:
+        """Extract EXIF using Pillow - handles missing EXIF gracefully without warnings."""
+        exif_data = {}
+        try:
+            from PIL import Image
+            from PIL.ExifTags import TAGS
+
+            with Image.open(str(file_path)) as img:
+                exif_raw = img.getexif()
+                if exif_raw:
+                    for tag_id, value in exif_raw.items():
+                        tag_name = TAGS.get(tag_id, str(tag_id))
+                        # Convert value to string for JSON serialization
+                        try:
+                            exif_data[tag_name] = str(value)
+                        except Exception:
+                            pass
+        except Exception as e:
+            logger.debug("pillow_exif_failed", path=str(file_path), error=str(e))
 
         return exif_data

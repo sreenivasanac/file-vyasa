@@ -8,18 +8,44 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-def load_yaml_config() -> dict:
-    """Load configuration from YAML file."""
+def get_config_path() -> Path | None:
+    """Get the path to the settings.yaml file."""
     config_paths = [
         Path(__file__).parent.parent / "config" / "settings.yaml",
         Path("config/settings.yaml"),
     ]
-
     for config_path in config_paths:
         if config_path.exists():
-            with open(config_path) as f:
-                return yaml.safe_load(f) or {}
+            return config_path
+    return None
+
+
+def load_yaml_config() -> dict:
+    """Load configuration from YAML file."""
+    config_path = get_config_path()
+    if config_path:
+        with open(config_path) as f:
+            return yaml.safe_load(f) or {}
     return {}
+
+
+def save_yaml_config(config: dict) -> bool:
+    """Save configuration to YAML file. Returns True on success."""
+    config_path = get_config_path()
+    if not config_path:
+        return False
+    with open(config_path, "w") as f:
+        yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+    return True
+
+
+def update_yaml_setting(section: str, key: str, value) -> bool:
+    """Update a specific setting in the YAML file and save it."""
+    config = load_yaml_config()
+    if section not in config:
+        config[section] = {}
+    config[section][key] = value
+    return save_yaml_config(config)
 
 
 # Load YAML config once at module import
@@ -97,6 +123,24 @@ class Settings(BaseSettings):
             "venv",
         ]),
         description="Default patterns to ignore during scan"
+    )
+
+    # Sync parallel processing settings
+    sync_extraction_workers: int = Field(
+        default=_yaml_config.get("sync", {}).get("extraction_workers", 8),
+        description="Number of parallel workers for content extraction"
+    )
+    sync_ai_workers: int = Field(
+        default=_yaml_config.get("sync", {}).get("ai_workers", 4),
+        description="Number of parallel workers for AI processing"
+    )
+    sync_db_batch_size: int = Field(
+        default=_yaml_config.get("sync", {}).get("db_batch_size", 10),
+        description="Batch size for database operations (smaller = more responsive UI)"
+    )
+    sync_enable_parallel: bool = Field(
+        default=_yaml_config.get("sync", {}).get("enable_parallel", True),
+        description="Enable parallel processing during sync"
     )
 
 

@@ -1,11 +1,11 @@
-"""Document extractor using markitdown for Office docs, PDFs, etc."""
+"""PDF extractor using pdfplumber with OCR fallback for image-based PDFs."""
 
 from pathlib import Path
 from typing import Any, Dict, Tuple
 
 import structlog
 
-from filevyasa.extractor.base import BaseExtractor
+from filevyasa.extractor.base import BaseExtractor, MarkItDownMixin
 
 logger = structlog.get_logger()
 
@@ -15,102 +15,39 @@ MIN_TEXT_LENGTH_FOR_OCR_SKIP = 100
 MAX_OCR_PAGES = 2
 
 
-class DocumentExtractor(BaseExtractor):
-    """Extractor for documents using markitdown library."""
-
-    def __init__(self):
-        self._markitdown = None
-
-    def _get_markitdown(self):
-        """Lazy load markitdown to avoid import errors if not installed."""
-        if self._markitdown is None:
-            try:
-                from markitdown import MarkItDown
-                self._markitdown = MarkItDown()
-            except ImportError:
-                logger.warning("markitdown_not_installed")
-                return None
-        return self._markitdown
+class PDFExtractor(MarkItDownMixin, BaseExtractor):
+    """Extractor for PDF files using markitdown, pdfplumber, and OCR fallback."""
 
     @classmethod
     def supported_extensions(cls) -> list[str]:
-        return [
-            "pdf",
-            "docx", "doc",
-            "xlsx", "xls", "csv",
-            "pptx", "ppt",
-            "rtf",
-            "odt", "ods", "odp",
-            "html", "htm",
-            "xml",
-            "json",
-            "ipynb",
-        ]
+        return ["pdf"]
 
     def extract(self, file_path: Path) -> Tuple[str, Dict[str, Any]]:
-        """Extract content from documents using markitdown."""
+        """Extract content from PDF files."""
         metadata = {}
 
+        # Try markitdown first
         md = self._get_markitdown()
-        if md is None:
-            return self._fallback_extract(file_path, metadata)
+        if md is not None:
+            try:
+                result = md.convert(str(file_path))
+                content = result.text_content if result.text_content else ""
 
-        try:
-            result = md.convert(str(file_path))
-            content = result.text_content if result.text_content else ""
+                if len(content.strip()) >= MIN_TEXT_LENGTH_FOR_OCR_SKIP:
+                    metadata["extraction_method"] = "markitdown"
+                    metadata["source_type"] = ".pdf"
+                    return content, metadata
 
-            # If markitdown returns insufficient content, try fallback
-            if len(content.strip()) < MIN_TEXT_LENGTH_FOR_OCR_SKIP:
                 logger.info(
                     "markitdown_insufficient_content",
                     path=str(file_path),
                     text_length=len(content.strip()),
                 )
-                return self._fallback_extract(file_path, metadata)
-
-            # Add basic metadata
-            metadata["extraction_method"] = "markitdown"
-            metadata["source_type"] = file_path.suffix.lower()
-
-            return content, metadata
-
-        except Exception as e:
-            logger.error("markitdown_extraction_failed", path=str(file_path), error=str(e))
-            return self._fallback_extract(file_path, metadata)
-
-    def _fallback_extract(self, file_path: Path, metadata: Dict) -> Tuple[str, Dict[str, Any]]:
-        """Fallback extraction for when markitdown fails."""
-        metadata["extraction_method"] = "fallback"
-        ext = file_path.suffix.lower()
-
-        # Try to read as text for certain formats
-        if ext in [".csv", ".html", ".htm", ".xml", ".json"]:
-            try:
-                content = file_path.read_text(encoding="utf-8")
-                return content, metadata
-            except Exception:
-                pass
-
-        # For PDFs, try pdfplumber first, then OCR if needed
-        if ext == ".pdf":
-            content, metadata = self._extract_pdf_with_fallback(file_path, metadata)
-            if content:
-                return content, metadata
-
-        # For DOCX, try python-docx
-        if ext == ".docx":
-            try:
-                from docx import Document
-                doc = Document(str(file_path))
-                paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
-                content = "\n\n".join(paragraphs)
-                metadata["paragraph_count"] = len(paragraphs)
-                metadata["extraction_method"] = "python-docx"
-                return content, metadata
             except Exception as e:
-                logger.warning("python_docx_failed", error=str(e))
+                logger.error("markitdown_extraction_failed", path=str(file_path), error=str(e))
 
-        return f"[Unable to extract content from {ext} file]", metadata
+        # Fall back to pdfplumber + OCR
+        return self._extract_pdf_with_fallback(file_path, metadata)
 
     def _extract_pdf_with_fallback(
         self, file_path: Path, metadata: Dict
@@ -124,7 +61,7 @@ class DocumentExtractor(BaseExtractor):
 
             with pdfplumber.open(str(file_path)) as pdf:
                 pages = []
-                for page in pdf.pages[:10]:
+                for page in pdf.pages[:4]:
                     text = page.extract_text()
                     if text:
                         pages.append(text)
@@ -156,7 +93,8 @@ class DocumentExtractor(BaseExtractor):
             metadata["extraction_method"] = "pdfplumber"
             return content, metadata
 
-        return "", metadata
+        metadata["extraction_method"] = "fallback"
+        return "[Unable to extract content from PDF file]", metadata
 
     def _ocr_pdf_with_doctr(self, file_path: Path) -> Tuple[str, bool]:
         """OCR PDF pages using doctr (pure Python, no Tesseract dependency).

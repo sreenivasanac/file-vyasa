@@ -474,18 +474,30 @@ export function SettingsPanel() {
             )}
           </div>
 
-          {/* Status Badge */}
-          <div className="flex items-center gap-2">
-            {config?.google?.credentials_configured ? (
-              <Badge variant="success">
-                <Check className="mr-1 h-3 w-3" />
-                Configured
-              </Badge>
-            ) : (
-              <Badge variant="default">
-                <FileText className="mr-1 h-3 w-3" />
-                Not configured
-              </Badge>
+          {/* Status Badge and Current Path */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              {config?.google?.credentials_configured ? (
+                <Badge variant="success">
+                  <Check className="mr-1 h-3 w-3" />
+                  Configured
+                </Badge>
+              ) : (
+                <Badge variant="default">
+                  <FileText className="mr-1 h-3 w-3" />
+                  Not configured
+                </Badge>
+              )}
+            </div>
+            {config?.google?.credentials_path && (
+              <div className="rounded-md border border-success/30 bg-success/5 p-2">
+                <p className="text-xs text-text-muted">
+                  <span className="font-medium text-text-secondary">Saved credentials file:</span>
+                </p>
+                <p className="mt-1 break-all text-xs text-success" title={config.google.credentials_path}>
+                  {config.google.credentials_path}
+                </p>
+              </div>
             )}
           </div>
 

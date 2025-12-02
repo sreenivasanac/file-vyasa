@@ -48,7 +48,7 @@ class ImageDescriber:
     OLLAMA_API_BASE = "http://localhost:11434"
 
     SUPPORTED_IMAGE_EXTENSIONS = [
-        "jpg", "jpeg", "png", "gif", "bmp", "webp"
+        "jpg", "jpeg", "png", "gif", "bmp", "webp", "tiff", "tif"
     ]
 
     def __init__(self):
@@ -73,6 +73,8 @@ class ImageDescriber:
                 ".gif": "image/gif",
                 ".bmp": "image/bmp",
                 ".webp": "image/webp",
+                ".tiff": "image/tiff",
+                ".tif": "image/tiff",
             }
             mime_type = mime_map.get(ext, "image/jpeg")
 

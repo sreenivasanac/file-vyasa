@@ -5,7 +5,6 @@ from typing import Any, Dict, Optional, Tuple
 
 from filevyasa.config import settings
 from filevyasa.extractor.base import BaseExtractor
-from filevyasa.extractor.document_extractor import DocumentExtractor
 from filevyasa.extractor.google_workspace_extractor import GoogleDocsExtractor
 from filevyasa.extractor.image_extractor import ImageExtractor
 from filevyasa.extractor.media_extractor import MediaExtractor
@@ -15,13 +14,20 @@ from filevyasa.extractor.non_content_extractor import (
     NoExtensionExtractor,
     UnhandledExtractor,
 )
+from filevyasa.extractor.notebook_extractor import NotebookExtractor
+from filevyasa.extractor.office_extractor import OfficeExtractor
+from filevyasa.extractor.pdf_extractor import PDFExtractor
 from filevyasa.extractor.text_extractor import TextExtractor
+from filevyasa.extractor.web_content_extractor import WebContentExtractor
 from filevyasa.models.file_object import FileObject
 
 # Instantiate extractors (order matters - first match wins)
 _extractors: list[BaseExtractor] = [
     TextExtractor(),
-    DocumentExtractor(),
+    PDFExtractor(),
+    OfficeExtractor(),
+    NotebookExtractor(),
+    WebContentExtractor(),
     ImageExtractor(),
     MediaExtractor(),
     CodeExtractor(),

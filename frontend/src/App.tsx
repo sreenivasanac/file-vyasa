@@ -19,7 +19,7 @@ const queryClient = new QueryClient({
 });
 
 function AppContent() {
-  const { currentView, selectedFileId, setBackendConnected } = useAppStore();
+  const { currentView, selectedFileId, setBackendConnected, setAppName } = useAppStore();
 
   useEffect(() => {
     const checkBackend = async () => {
@@ -35,6 +35,19 @@ function AppContent() {
     const interval = setInterval(checkBackend, 30000);
     return () => clearInterval(interval);
   }, [setBackendConnected]);
+
+  useEffect(() => {
+    const fetchAppConfig = async () => {
+      try {
+        const config = await api.config.get();
+        setAppName(config.app_name);
+        document.title = config.app_name;
+      } catch {
+        // Keep default app name if config fetch fails
+      }
+    };
+    fetchAppConfig();
+  }, [setAppName]);
 
   const renderContent = () => {
     switch (currentView) {

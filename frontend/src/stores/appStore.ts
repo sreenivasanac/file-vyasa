@@ -4,6 +4,10 @@ import type { FileObject, MonitoredFolder } from '@/types';
 type View = 'add-folder' | 'folders' | 'files' | 'settings';
 
 interface AppState {
+  // App config
+  appName: string;
+  setAppName: (name: string) => void;
+
   // Navigation
   currentView: View;
   setCurrentView: (view: View) => void;
@@ -41,6 +45,10 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
+  // App config
+  appName: 'FileVyasa',
+  setAppName: (name) => set({ appName: name }),
+
   // Navigation
   currentView: 'folders',
   setCurrentView: (view) => set({ currentView: view }),

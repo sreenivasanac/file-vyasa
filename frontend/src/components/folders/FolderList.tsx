@@ -243,7 +243,12 @@ export function FolderList() {
       <ConfirmDialog
         isOpen={folderToDelete !== null}
         title="Remove Folder"
-        message="Remove this folder from monitoring? Your files will not be deleted."
+        message={
+          <>
+            Remove this folder from monitoring?{' '}
+            <span className="font-medium text-text-primary">Your files will not be deleted.</span>
+          </>
+        }
         confirmText="Remove"
         cancelText="Cancel"
         variant="danger"

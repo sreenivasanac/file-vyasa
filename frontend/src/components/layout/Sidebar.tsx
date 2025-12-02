@@ -18,7 +18,7 @@ const navItems: { id: View; label: string; icon: typeof FolderOpen }[] = [
 ];
 
 export function Sidebar() {
-  const { currentView, setCurrentView, backendConnected } = useAppStore();
+  const { currentView, setCurrentView, backendConnected, appName } = useAppStore();
 
   return (
     <aside className="flex h-full w-56 flex-col border-r border-border bg-bg-secondary">
@@ -26,7 +26,7 @@ export function Sidebar() {
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent">
           <Files className="h-5 w-5 text-white" />
         </div>
-        <span className="text-lg font-semibold text-text-primary">FileVyasa</span>
+        <span className="text-lg font-semibold text-text-primary">{appName}</span>
       </div>
 
       <nav className="flex-1 px-2 py-2">

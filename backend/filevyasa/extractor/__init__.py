@@ -1,7 +1,6 @@
 """Extractor module for content extraction from files."""
 
-from filevyasa.extractor.base import BaseExtractor
-from filevyasa.extractor.document_extractor import DocumentExtractor
+from filevyasa.extractor.base import BaseExtractor, MarkItDownMixin
 from filevyasa.extractor.factory import enrich_file_object, extract_content, get_extractor
 from filevyasa.extractor.google_workspace_extractor import GoogleDocsExtractor
 from filevyasa.extractor.image_extractor import ImageExtractor
@@ -13,12 +12,20 @@ from filevyasa.extractor.non_content_extractor import (
     NonContentExtractor,
     UnhandledExtractor,
 )
+from filevyasa.extractor.notebook_extractor import NotebookExtractor
+from filevyasa.extractor.office_extractor import OfficeExtractor
+from filevyasa.extractor.pdf_extractor import PDFExtractor
 from filevyasa.extractor.text_extractor import TextExtractor
+from filevyasa.extractor.web_content_extractor import WebContentExtractor
 
 __all__ = [
     "BaseExtractor",
+    "MarkItDownMixin",
     "TextExtractor",
-    "DocumentExtractor",
+    "PDFExtractor",
+    "OfficeExtractor",
+    "NotebookExtractor",
+    "WebContentExtractor",
     "ImageExtractor",
     "MediaExtractor",
     "MediaTranscriber",

@@ -3,9 +3,12 @@
 
 
 from filevyasa.extractor import (
-    DocumentExtractor,
     ImageExtractor,
+    NotebookExtractor,
+    OfficeExtractor,
+    PDFExtractor,
     TextExtractor,
+    WebContentExtractor,
     extract_content,
     get_extractor,
 )
@@ -22,13 +25,31 @@ class TestExtractorFactory:
         extractor = get_extractor(".md")
         assert isinstance(extractor, TextExtractor)
 
-    def test_get_extractor_document(self):
-        """Test getting document extractor."""
+    def test_get_extractor_pdf(self):
+        """Test getting PDF extractor."""
         extractor = get_extractor("pdf")
-        assert isinstance(extractor, DocumentExtractor)
+        assert isinstance(extractor, PDFExtractor)
 
+    def test_get_extractor_office(self):
+        """Test getting Office document extractor."""
         extractor = get_extractor("docx")
-        assert isinstance(extractor, DocumentExtractor)
+        assert isinstance(extractor, OfficeExtractor)
+
+        extractor = get_extractor("xlsx")
+        assert isinstance(extractor, OfficeExtractor)
+
+    def test_get_extractor_notebook(self):
+        """Test getting notebook extractor."""
+        extractor = get_extractor("ipynb")
+        assert isinstance(extractor, NotebookExtractor)
+
+    def test_get_extractor_web_content(self):
+        """Test getting web content extractor."""
+        extractor = get_extractor("html")
+        assert isinstance(extractor, WebContentExtractor)
+
+        extractor = get_extractor("xml")
+        assert isinstance(extractor, WebContentExtractor)
 
     def test_get_extractor_image(self):
         """Test getting image extractor."""
@@ -68,24 +89,34 @@ class TestTextExtractor:
         assert "# Test README" in content
 
 
-class TestDocumentExtractor:
-    """Tests for DocumentExtractor."""
+class TestPDFExtractor:
+    """Tests for PDFExtractor."""
 
     def test_supported_extensions(self):
-        """Test that common document extensions are supported."""
-        ext = DocumentExtractor.supported_extensions()
+        """Test that PDF extension is supported."""
+        ext = PDFExtractor.supported_extensions()
         assert "pdf" in ext
-        assert "docx" in ext
-        assert "xlsx" in ext
 
     def test_extract_with_sample_data(self, sample_data_dir):
         """Test extraction with real sample files if available."""
         pdf_file = sample_data_dir / "paper_1col.pdf"
         if pdf_file.exists():
-            extractor = DocumentExtractor()
+            extractor = PDFExtractor()
             content, metadata = extractor.extract(pdf_file)
             # Should return some content
             assert len(content) > 0 or "Unable to extract" in content
+
+
+class TestOfficeExtractor:
+    """Tests for OfficeExtractor."""
+
+    def test_supported_extensions(self):
+        """Test that common Office extensions are supported."""
+        ext = OfficeExtractor.supported_extensions()
+        assert "docx" in ext
+        assert "xlsx" in ext
+        assert "pptx" in ext
+        assert "csv" in ext
 
 
 class TestImageExtractor:

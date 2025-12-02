@@ -283,34 +283,35 @@ class MediaTranscriber:
         """Transcribe audio/video file.
 
         Extracts first 10 minutes of audio and transcribes using Whisper.
-        Updates file_obj with transcription and related metadata.
+        Updates file_obj.content_preview with transcription text and
+        stores duration/language info in file_obj.metadata.
 
         Args:
             file_obj: FileObject representing audio/video file
 
         Returns:
-            FileObject with transcription populated
+            FileObject with content_preview containing transcription
         """
         file_path = Path(file_obj.path)
 
         if not file_path.exists():
             logger.warning("media_file_not_found", path=str(file_path))
-            file_obj.transcription = None
             file_obj.extraction_error = "Media file not found"
             return file_obj
 
         ext = file_path.suffix.lower().lstrip(".")
         if ext not in AUDIO_EXTENSIONS + VIDEO_EXTENSIONS:
             logger.debug("unsupported_media_format", extension=ext)
-            file_obj.transcription = None
             return file_obj
 
         # Check file duration
         file_duration = self._get_file_duration(file_path)
         if file_duration is not None and file_duration < 1:
             logger.debug("file_too_short", path=str(file_path), duration=file_duration)
-            file_obj.transcription = "[Audio too short to transcribe]"
-            file_obj.transcription_duration = file_duration
+            file_obj.content_preview = "[Audio too short to transcribe]"
+            if file_obj.metadata is None:
+                file_obj.metadata = {}
+            file_obj.metadata["media_duration"] = file_duration
             return file_obj
 
         # Determine actual duration to transcribe
@@ -334,7 +335,6 @@ class MediaTranscriber:
                 file_path, temp_audio_path, int(transcribe_duration)
             )
             if not extract_ok:
-                file_obj.transcription = None
                 file_obj.extraction_error = "Audio extraction failed"
                 return file_obj
 
@@ -351,14 +351,15 @@ class MediaTranscriber:
             transcription_text = result.get("text", "").strip()
             detected_language = result.get("language", "unknown")
 
-            if transcription_text:
-                file_obj.transcription = transcription_text
-                file_obj.transcription_duration = transcribe_duration
-                file_obj.content_preview = self._truncate_for_preview(transcription_text)
+            # Store duration in metadata
+            if file_obj.metadata is None:
+                file_obj.metadata = {}
+            file_obj.metadata["media_duration"] = transcribe_duration
 
-                # Store language in metadata
-                if file_obj.metadata is None:
-                    file_obj.metadata = {}
+            if transcription_text:
+                file_obj.content_preview = transcription_text
+
+                # Store transcription metadata
                 file_obj.metadata["transcription_language"] = detected_language
                 file_obj.metadata["transcription_model"] = f"whisper-{self.model_size}"
 
@@ -367,13 +368,10 @@ class MediaTranscriber:
                            language=detected_language,
                            chars=len(transcription_text))
             else:
-                file_obj.transcription = "[No speech detected in audio]"
-                file_obj.transcription_duration = transcribe_duration
-                file_obj.content_preview = file_obj.transcription
+                file_obj.content_preview = "[No speech detected in audio]"
 
         except Exception as e:
             logger.error("transcription_failed", filename=file_obj.filename, error=str(e))
-            file_obj.transcription = None
             file_obj.extraction_error = f"Transcription failed: {str(e)[:200]}"
 
         finally:
@@ -385,12 +383,3 @@ class MediaTranscriber:
                     pass
 
         return file_obj
-
-    def _truncate_for_preview(self, text: str, max_lines: int = 50) -> str:
-        """Truncate transcription to first N lines for content preview."""
-        lines = text.split('\n')
-        if len(lines) <= max_lines:
-            return text
-
-        truncated = '\n'.join(lines[:max_lines])
-        return truncated + f"\n... [truncated, {len(lines) - max_lines} more lines]"

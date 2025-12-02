@@ -43,9 +43,6 @@ class FileDetailResponse(BaseModel):
     ai_brief_summary: str
     ai_summary: str
     llm_model: Optional[str]
-    # Transcription for audio/video files
-    transcription: Optional[str]
-    transcription_duration: Optional[float]
     extraction_status: str
     extraction_error: Optional[str]
     is_password_protected: bool
@@ -61,6 +58,39 @@ def _format_size(size_bytes: int) -> str:
             return f"{size:.1f} {unit}"
         size /= 1024
     return f"{size:.1f} TB"
+
+
+def _build_file_response(file_obj: FileObjectTable) -> FileDetailResponse:
+    """Build FileDetailResponse from a FileObjectTable instance."""
+    path_parts = file_obj.path.rsplit("/", 1)
+    parent_dir = path_parts[0] if len(path_parts) > 1 else ""
+
+    return FileDetailResponse(
+        id=file_obj.id,
+        path=file_obj.path,
+        filename=file_obj.filename,
+        extension=file_obj.extension,
+        mime_type=file_obj.mime_type,
+        size_bytes=file_obj.size_bytes,
+        size_human=_format_size(file_obj.size_bytes),
+        created_at=file_obj.created_at.isoformat() if file_obj.created_at else None,
+        modified_at=file_obj.modified_at.isoformat() if file_obj.modified_at else None,
+        accessed_at=file_obj.accessed_at.isoformat() if file_obj.accessed_at else None,
+        is_symlink=getattr(file_obj, 'is_symlink', False),
+        category=file_obj.category,
+        parent_dir=parent_dir,
+        content_preview=file_obj.content_preview,
+        exif_data=file_obj.exif_data or {},
+        metadata=file_obj.file_metadata or {},
+        ai_brief_summary=file_obj.ai_brief_summary,
+        ai_summary=file_obj.ai_summary,
+        llm_model=getattr(file_obj, 'llm_model', None),
+        extraction_status=getattr(file_obj, 'extraction_status', 'pending'),
+        extraction_error=getattr(file_obj, 'extraction_error', None),
+        is_password_protected=getattr(file_obj, 'is_password_protected', False),
+        scanned_at=file_obj.scanned_at.isoformat() if file_obj.scanned_at else "",
+        summarized_at=file_obj.summarized_at.isoformat() if file_obj.summarized_at else None,
+    )
 
 
 @router.get("/", response_model=FileListResponse)
@@ -119,106 +149,48 @@ async def list_files(
     )
 
 
+@router.get("/lookup", response_model=FileDetailResponse)
+async def lookup_file(
+    id: Optional[str] = Query(None, description="Lookup by file ID"),
+    path: Optional[str] = Query(None, description="Lookup by file path"),
+    inode: Optional[int] = Query(None, description="Lookup by inode"),
+):
+    """Get file by ID, path, or inode. Exactly one parameter must be provided."""
+    params_provided = sum(p is not None for p in [id, path, inode])
+    if params_provided != 1:
+        raise HTTPException(
+            status_code=400,
+            detail="Exactly one of 'id', 'path', or 'inode' must be provided",
+        )
+
+    session = get_session()
+    try:
+        if id is not None:
+            file_obj = session.query(FileObjectTable).filter_by(id=id).first()
+            lookup_desc = f"id: {id}"
+        elif path is not None:
+            file_obj = session.query(FileObjectTable).filter_by(path=path).first()
+            lookup_desc = f"path: {path}"
+        else:
+            file_obj = session.query(FileObjectTable).filter_by(inode=inode).first()
+            lookup_desc = f"inode: {inode}"
+
+        if not file_obj:
+            raise HTTPException(status_code=404, detail=f"File not found ({lookup_desc})")
+
+        return _build_file_response(file_obj)
+    finally:
+        session.close()
+
+
 @router.get("/{file_id}", response_model=FileDetailResponse)
 async def get_file(file_id: str):
-    """Get detailed information about a specific file."""
+    """Get detailed information about a specific file by ID."""
     session = get_session()
-
-    file_obj = session.query(FileObjectTable).filter_by(id=file_id).first()
-    if not file_obj:
+    try:
+        file_obj = session.query(FileObjectTable).filter_by(id=file_id).first()
+        if not file_obj:
+            raise HTTPException(status_code=404, detail=f"File not found: {file_id}")
+        return _build_file_response(file_obj)
+    finally:
         session.close()
-        raise HTTPException(status_code=404, detail=f"File not found: {file_id}")
-
-    # Calculate parent dir
-    path_parts = file_obj.path.rsplit("/", 1)
-    parent_dir = path_parts[0] if len(path_parts) > 1 else ""
-
-    result = FileDetailResponse(
-        id=file_obj.id,
-        path=file_obj.path,
-        filename=file_obj.filename,
-        extension=file_obj.extension,
-        mime_type=file_obj.mime_type,
-        size_bytes=file_obj.size_bytes,
-        size_human=_format_size(file_obj.size_bytes),
-        created_at=file_obj.created_at.isoformat() if file_obj.created_at else None,
-        modified_at=file_obj.modified_at.isoformat() if file_obj.modified_at else None,
-        accessed_at=(
-            file_obj.accessed_at.isoformat()
-            if getattr(file_obj, 'accessed_at', None) else None
-        ),
-        is_symlink=getattr(file_obj, 'is_symlink', False),
-        category=file_obj.category,
-        parent_dir=parent_dir,
-        content_preview=file_obj.content_preview,
-        exif_data=file_obj.exif_data or {},
-        metadata=file_obj.file_metadata or {},
-        ai_brief_summary=file_obj.ai_brief_summary,
-        ai_summary=file_obj.ai_summary,
-        llm_model=getattr(file_obj, 'llm_model', None),
-        transcription=getattr(file_obj, 'transcription', None),
-        transcription_duration=getattr(file_obj, 'transcription_duration', None),
-        extraction_status=getattr(file_obj, 'extraction_status', 'pending'),
-        extraction_error=getattr(file_obj, 'extraction_error', None),
-        is_password_protected=getattr(file_obj, 'is_password_protected', False),
-        scanned_at=file_obj.scanned_at.isoformat() if file_obj.scanned_at else "",
-        summarized_at=file_obj.summarized_at.isoformat() if file_obj.summarized_at else None,
-    )
-
-    session.close()
-    return result
-
-
-@router.get("/categories/stats")
-async def get_category_stats(folder_id: Optional[str] = None):
-    """Get statistics by file category."""
-    session = get_session()
-
-    from sqlalchemy import func
-
-    query = session.query(
-        FileObjectTable.category,
-        func.count(FileObjectTable.id).label("count"),
-        func.sum(FileObjectTable.size_bytes).label("total_size"),
-    ).group_by(FileObjectTable.category)
-
-    if folder_id:
-        query = query.filter(FileObjectTable.folder_id == folder_id)
-
-    results = query.all()
-
-    stats = {}
-    for category, count, total_size in results:
-        stats[category] = {
-            "count": count,
-            "total_size": total_size or 0,
-            "total_size_human": _format_size(total_size or 0),
-        }
-
-    session.close()
-    return stats
-
-
-@router.get("/extensions/stats")
-async def get_extension_stats(folder_id: Optional[str] = None, limit: int = 20):
-    """Get statistics by file extension."""
-    session = get_session()
-
-    from sqlalchemy import func
-
-    query = session.query(
-        FileObjectTable.extension,
-        func.count(FileObjectTable.id).label("count"),
-    ).group_by(FileObjectTable.extension).order_by(
-        func.count(FileObjectTable.id).desc()
-    ).limit(limit)
-
-    if folder_id:
-        query = query.filter(FileObjectTable.folder_id == folder_id)
-
-    results = query.all()
-
-    stats = [{"extension": ext or "(no extension)", "count": count} for ext, count in results]
-
-    session.close()
-    return stats

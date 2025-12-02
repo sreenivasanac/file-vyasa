@@ -213,6 +213,7 @@ class Scanner:
             filename=file_path.name,
             extension=extension,
             mime_type=mime_type or "",
+            inode=stat.st_ino,  # Unique file ID - survives rename/move on same filesystem
             size_bytes=stat.st_size,
             created_at=created_at,
             modified_at=modified_at,

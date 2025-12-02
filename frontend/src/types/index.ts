@@ -31,9 +31,6 @@ export interface FileObject {
   ai_brief_summary: string;
   ai_summary: string;
   llm_model: string | null;
-  // Transcription for audio/video files
-  transcription: string | null;
-  transcription_duration: number | null;
   exif_data: Record<string, unknown>;
   metadata: Record<string, unknown>;
   extraction_status: ExtractionStatus;

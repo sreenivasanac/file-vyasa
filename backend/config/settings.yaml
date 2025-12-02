@@ -1,6 +1,5 @@
 # FileVyasa Application Settings
 # Non-secret configuration values
-
 app:
   name: FileVyasa
   debug: false
@@ -21,7 +20,7 @@ llm:
   provider: ollama
   model: llama3.2
   api_base: http://localhost:11434
-  
+
   # OpenAI
   # provider: openai
   # model: gpt-4o-mini  # or: gpt-4o, gpt-4-turbo, gpt-3.5-turbo
@@ -58,14 +57,13 @@ google:
   # Can also be set via FILEVYASA_GOOGLE_CREDENTIALS_PATH environment variable
   # Documents must be shared with the service account email for access
   credentials_path: null
-
 scan:
   default_ignore_patterns:
-    - .git
-    - .svn
-    - __pycache__
-    - node_modules
-    - .DS_Store
-    - "*.pyc"
-    - .venv
-    - venv
+  - .git
+  - .svn
+  - __pycache__
+  - node_modules
+  - .DS_Store
+  - '*.pyc'
+  - .venv
+  - venv

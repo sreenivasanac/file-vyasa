@@ -17,6 +17,7 @@ class FileObjectBase(BaseModel):
     filename: str = Field(..., description="File name with extension")
     extension: str = Field(default="", description="File extension (lowercase, without dot)")
     mime_type: str = Field(default="", description="MIME type of the file")
+    inode: Optional[int] = Field(default=None, description="Filesystem inode")
 
     size_bytes: int = Field(default=0, description="File size in bytes")
     created_at: Optional[datetime] = Field(default=None, description="File creation timestamp")
@@ -43,13 +44,7 @@ class FileObjectBase(BaseModel):
         default=None, description="LLM model used for summarization"
     )
 
-    # Transcription for audio/video files
-    transcription: Optional[str] = Field(
-        default=None, description="Transcription text for audio/video files"
-    )
-    transcription_duration: Optional[float] = Field(
-        default=None, description="Duration of transcribed content in seconds"
-    )
+
 
     # Extraction status
     extraction_status: ExtractionStatus = Field(
@@ -133,10 +128,6 @@ class FileObjectResponse(BaseModel):
     ai_brief_summary: str
     ai_summary: str
     llm_model: Optional[str]
-
-    # Transcription for audio/video files
-    transcription: Optional[str]
-    transcription_duration: Optional[float]
 
     exif_data: dict[str, Any]
     metadata: dict[str, Any]

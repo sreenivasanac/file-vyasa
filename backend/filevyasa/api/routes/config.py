@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from filevyasa.config import settings
+from filevyasa.config import settings, update_yaml_setting
 
 router = APIRouter()
 
@@ -107,13 +107,12 @@ async def update_google_config(config: GoogleConfigRequest):
     """
     Update Google Workspace credentials configuration.
 
-    Note: This updates the in-memory settings only.
-    For persistence, use environment variables or .env file.
+    Persists the credentials path to settings.yaml.
     """
     if config.credentials_path is not None:
-        settings.google_credentials_path = (
-            config.credentials_path if config.credentials_path else None
-        )
+        new_path = config.credentials_path if config.credentials_path else None
+        settings.google_credentials_path = new_path
+        update_yaml_setting("google", "credentials_path", new_path)
 
     return GoogleConfigResponse(
         credentials_configured=bool(settings.google_credentials_path),
@@ -196,14 +195,49 @@ async def verify_google_credentials():
 
 @router.get("/supported-extensions")
 async def get_supported_extensions():
-    """Get list of supported file extensions for extraction."""
-    from filevyasa.extractor import DocumentExtractor, ImageExtractor, TextExtractor
+    """Get list of all supported file extensions for extraction.
 
-    return {
-        "text": TextExtractor.supported_extensions(),
-        "document": DocumentExtractor.supported_extensions(),
-        "image": ImageExtractor.supported_extensions(),
-    }
+    Returns a flat list of all file extensions supported by all extractors.
+    Empty string ("") indicates support for files without extensions.
+    """
+    from filevyasa.extractor import (
+        ArchiveExtractor,
+        CodeExtractor,
+        GoogleDocsExtractor,
+        ImageExtractor,
+        MediaExtractor,
+        NotebookExtractor,
+        OfficeExtractor,
+        PDFExtractor,
+        TextExtractor,
+        UnhandledExtractor,
+        WebContentExtractor,
+    )
+
+    # Collect all extensions from all extractors
+    all_extensions = set()
+
+    extractors = [
+        TextExtractor,
+        PDFExtractor,
+        OfficeExtractor,
+        NotebookExtractor,
+        WebContentExtractor,
+        ImageExtractor,
+        MediaExtractor,
+        CodeExtractor,
+        ArchiveExtractor,
+        GoogleDocsExtractor,
+        UnhandledExtractor,
+    ]
+
+    for extractor in extractors:
+        all_extensions.update(extractor.supported_extensions())
+
+    # Add empty string to indicate support for files without extensions
+    all_extensions.add("")
+
+    return sorted(all_extensions)
 
 
 class LlavaStatusResponse(BaseModel):

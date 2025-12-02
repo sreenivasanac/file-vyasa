@@ -3,7 +3,7 @@ import { useAppStore } from '@/stores/appStore';
 import { truncatePath } from '@/lib/utils';
 
 export function Header() {
-  const { currentFolderPath, currentView } = useAppStore();
+  const { currentFolderPath, currentView, appName } = useAppStore();
 
   const titles: Record<string, string> = {
     'add-folder': 'Add Folder',
@@ -16,7 +16,7 @@ export function Header() {
     <header className="flex h-14 items-center justify-between border-b border-border bg-bg-secondary px-6">
       <div className="flex items-center gap-3">
         <h1 className="text-lg font-semibold text-text-primary">
-          {titles[currentView] || 'FileVyasa'}
+          {titles[currentView] || appName}
         </h1>
         {currentFolderPath && currentView === 'files' && (
           <div className="flex items-center gap-2 rounded-md bg-bg-tertiary px-3 py-1.5 text-sm text-text-secondary">

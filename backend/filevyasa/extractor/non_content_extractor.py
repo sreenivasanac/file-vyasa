@@ -41,7 +41,7 @@ class NonContentExtractor(BaseExtractor):
 
 
 class CodeExtractor(NonContentExtractor):
-    """Extractor for code/script files. Skips content extraction."""
+    """Extractor for code/script related files. Skips content extraction."""
 
     @classmethod
     def supported_extensions(cls) -> List[str]:
@@ -54,6 +54,7 @@ class CodeExtractor(NonContentExtractor):
             "sh", "bash", "zsh", "fish",
             "sql", "r", "lua", "pl", "pm",
             "vue", "svelte",
+            "json",
         ]
 
 

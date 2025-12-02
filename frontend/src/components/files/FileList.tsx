@@ -1,10 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  ChevronLeft,
-  ChevronRight,
-  List,
-  FolderTree as FolderTreeIcon,
   RefreshCw,
   Trash2,
   Clock,
@@ -15,18 +11,14 @@ import {
 } from 'lucide-react';
 import { api } from '@/api/client';
 import { useAppStore } from '@/stores/appStore';
-import { FileRow } from './FileRow';
 import { FileFilters } from './FileFilters';
 import { FolderTree } from './FolderTree';
 import { SyncProgress } from '@/components/folders/SyncProgress';
-import { Button } from '@/components/common/Button';
 import { Badge } from '@/components/common/Badge';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Spinner } from '@/components/common/Spinner';
 import { formatDate } from '@/lib/utils';
 import type { FileCategory, FolderStatus } from '@/types';
-
-type ViewMode = 'tree' | 'list';
 
 export function FileList() {
   const {
@@ -42,8 +34,6 @@ export function FileList() {
   } = useAppStore();
   const queryClient = useQueryClient();
 
-  const [viewMode, setViewMode] = useState<ViewMode>('tree');
-  const [page, setPage] = useState(1);
   const [category, setCategory] = useState<FileCategory | undefined>();
   const [search, setSearch] = useState('');
   const [isSyncingFolder, setIsSyncingFolder] = useState(false);
@@ -54,13 +44,13 @@ export function FileList() {
   const currentFolder = folders.find((f) => f.id === currentFolderId);
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['files', currentFolderId, page, category, search],
+    queryKey: ['files', currentFolderId, category, search],
     queryFn: () =>
       api.files.list({
         folder_id: currentFolderId || undefined,
         category,
         search: search || undefined,
-        page,
+        page: 1,
         page_size: pageSize,
       }),
     enabled: !!currentFolderId,
@@ -72,8 +62,6 @@ export function FileList() {
       refetch();
     }
   }, [isSyncing, refetch]);
-
-  const totalPages = data ? Math.ceil(data.total / pageSize) : 0;
 
   const handleSync = async () => {
     if (!currentFolderId) return;
@@ -180,37 +168,13 @@ export function FileList() {
 
       <div className="border-b border-border p-4">
         <SyncProgress />
-        <div className="mt-4 flex items-center justify-between">
+        <div className="mt-4">
           <FileFilters
             category={category}
             onCategoryChange={setCategory}
             search={search}
             onSearchChange={setSearch}
           />
-          <div className="ml-4 flex items-center gap-1 rounded-md border border-border bg-bg-tertiary p-1">
-            <button
-              onClick={() => setViewMode('tree')}
-              className={`rounded p-1.5 transition-colors ${
-                viewMode === 'tree'
-                  ? 'bg-accent text-white'
-                  : 'text-text-muted hover:text-text-primary'
-              }`}
-              title="Tree view"
-            >
-              <FolderTreeIcon className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`rounded p-1.5 transition-colors ${
-                viewMode === 'list'
-                  ? 'bg-accent text-white'
-                  : 'text-text-muted hover:text-text-primary'
-              }`}
-              title="List view"
-            >
-              <List className="h-4 w-4" />
-            </button>
-          </div>
         </div>
       </div>
 
@@ -230,7 +194,7 @@ export function FileList() {
               'No files found'
             )}
           </div>
-        ) : viewMode === 'tree' && currentFolderPath ? (
+        ) : currentFolderPath ? (
           <FolderTree
             files={data?.files || []}
             rootPath={currentFolderPath}
@@ -240,68 +204,22 @@ export function FileList() {
             totalFiles={isSyncing ? syncProgress.total : currentFolder?.total_files}
             processedFiles={isSyncing ? syncProgress.processed : currentFolder?.processed_files}
           />
-        ) : (
-          <table className="w-full">
-            <thead className="sticky top-0 bg-bg-secondary">
-              <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-text-muted">
-                <th className="px-4 py-3">File</th>
-                <th className="px-4 py-3">Category</th>
-                <th className="px-4 py-3">Size</th>
-                <th className="px-4 py-3">Summary</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data?.files.map((file) => (
-                <FileRow
-                  key={file.id}
-                  file={file}
-                  isSelected={selectedFileId === file.id}
-                  onClick={() =>
-                    setSelectedFileId(selectedFileId === file.id ? null : file.id)
-                  }
-                />
-              ))}
-            </tbody>
-          </table>
-        )}
+        ) : null}
       </div>
 
-      {viewMode === 'list' && totalPages > 1 && (
-        <div className="flex items-center justify-between border-t border-border px-4 py-3">
-          <span className="text-sm text-text-muted">
-            Page {page} of {totalPages} ({data?.total} files)
-          </span>
-          <div className="flex gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {viewMode === 'tree' && (
-        <div className="border-t border-border px-4 py-2 text-xs text-text-muted">
-          {(isSyncing ? syncProgress.total : currentFolder?.total_files) ?? data?.total ?? 0} files total
-        </div>
-      )}
+      <div className="border-t border-border px-4 py-2 text-xs text-text-muted">
+        {(isSyncing ? syncProgress.total : currentFolder?.total_files) ?? data?.total ?? 0} files total
+      </div>
 
       <ConfirmDialog
         isOpen={showDeleteConfirm}
         title="Remove Folder"
-        message="Remove this folder from monitoring? Your files will not be deleted."
+        message={
+          <>
+            Remove this folder from monitoring?{' '}
+            <span className="font-medium text-text-primary">Your files will not be deleted.</span>
+          </>
+        }
         confirmText="Yes"
         cancelText="Cancel"
         variant="danger"

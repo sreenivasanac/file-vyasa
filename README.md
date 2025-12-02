@@ -1,87 +1,79 @@
 # FileVyasa — AI-Powered Local File Organizer
 
-A desktop application that scans local directories, extracts content from files, and generates AI-powered summaries to help you organize your filesystem.
+A desktop application that scans local directories, extracts content from files, and uses AI to generate summaries, describe images, and transcribe media—helping you understand and organize your filesystem.
+
+## Features
+
+- **Smart Folder Monitoring** — Add folders to monitor, auto-detect changes on re-sync
+- **Content Extraction** — Supports 30+ file types including documents, images, media, code, and archives
+- **AI Summarization** — Generate concise summaries for documents using local (Ollama) or cloud LLMs
+- **Image Description** — AI-powered descriptions for photos and images
+- **Media Transcription** — Audio/video transcription via Whisper
+- **Desktop App** — Native cross-platform app with file browser, search, and filtering
 
 ## Project Structure
 
 ```
 file-vyasa/
-├── backend/          # Python FastAPI backend (scanning, extraction, LLM summarization)
+├── backend/          # Python FastAPI backend
 ├── frontend/         # Tauri + React desktop app
-├── agentic_development_docs/  # Design plans and documentation
-├── handle_file_types/         # File type analysis utilities
+├── agentic_development_docs/  # Design docs and roadmap
 └── sample_data/      # Test data for development
 ```
-
-## Current Status (v1.1 / v1.2)
-
-- Directory scanning with file discovery
-- Content extraction (text, documents, images, PDFs)
-- AI-powered file summarization via LiteLLM (Ollama, OpenAI, Anthropic)
-- Desktop UI with file list, tree view, filtering, search, and detail views
-- SQLite persistence for scan sessions
 
 ## Quick Start
 
 ### Prerequisites
 - Python 3.11+ with [uv](https://github.com/astral-sh/uv)
 - Node.js 18+ with pnpm
-- [Ollama](https://ollama.ai) (recommended) or cloud LLM API key
+- Rust (for Tauri desktop app)
+- [Ollama](https://ollama.ai) (recommended for local AI) or cloud LLM API key
 
-### Backend
+### Running
+
+**Backend:**
 ```bash
 cd backend
 uv sync
 uv run python run.py
 ```
 
-### Frontend
+**Frontend:**
 ```bash
 cd frontend
 pnpm install
 pnpm tauri:dev
 ```
 
-Both services must run concurrently — the frontend connects to the backend API at `http://127.0.0.1:8000`.
+Both services must run concurrently. The frontend connects to the backend at `http://127.0.0.1:8000`.
 
 ## LLM Configuration
 
-FileVyasa supports multiple LLM providers for generating file summaries.
-
 ### Ollama (Local, Recommended)
-
-No API key required. Runs entirely on your machine.
-
 ```bash
-# Install Ollama from https://ollama.ai
-# Pull a model
 ollama pull llama3.2
 ```
-
-Default configuration in `backend/config/settings.yaml`:
-```yaml
-llm:
-  provider: ollama
-  model: llama3.2
-  api_base: http://localhost:11434
-```
-
-**Recommended models:** `llama3.2`, `llama3.1`, `mistral`, `phi3`, `gemma2`
+No API key required—runs entirely on your machine.
 
 ### OpenAI / Anthropic
-
-Set your API key as environment variable:
 ```bash
 export FILEVYASA_LLM_API_KEY=your-key-here
 ```
 
-Then configure in Settings or `settings.yaml`:
-```yaml
-llm:
-  provider: openai  # or anthropic
-  model: gpt-4o-mini  # or claude-3-5-sonnet-20241022
-```
+Configure provider/model in the Settings panel or `backend/config/settings.yaml`.
 
-## Future Plans
+## Supported File Types
 
-See design documents in `agentic_development_docs/project_design_plan/` for V2 roadmap including preference persistence, hybrid model routing, and enhanced organization workflows.
+| Category | Extensions |
+|----------|------------|
+| Documents | PDF, DOCX, XLSX, PPTX, TXT, MD, RTF |
+| Images | JPG, PNG, GIF, WEBP, HEIC, BMP, TIFF |
+| Media | MP3, MP4, WAV, FLAC, M4A, MOV, AVI, MKV |
+| Code | PY, JS, TS, HTML, CSS, JSON, YAML, and more |
+| Notebooks | IPYNB |
+| Archives | ZIP, TAR, GZ (metadata only) |
+
+## Documentation
+
+- [Backend README](backend/README.md) — API endpoints, configuration, development
+- [Frontend README](frontend/README.md) — UI architecture, building, development

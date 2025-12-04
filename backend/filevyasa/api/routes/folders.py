@@ -1,6 +1,7 @@
 """Folder API endpoints for managing monitored folders and sync operations."""
 
 import os
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
@@ -27,6 +28,15 @@ router = APIRouter()
 
 # --- Helper Functions ---
 
+@contextmanager
+def db_session():
+    """Context manager for database sessions."""
+    session = get_session()
+    try:
+        yield session
+    finally:
+        session.close()
+
 def _check_folder_conflicts(
     root_path: str, exclude_folder_id: Optional[str] = None
 ) -> Optional[str]:
@@ -35,8 +45,7 @@ def _check_folder_conflicts(
     Returns the conflicting folder's root_path if there's a conflict, None otherwise.
     A conflict occurs if one path is a subfolder of another.
     """
-    session = get_session()
-    try:
+    with db_session() as session:
         folders = session.query(MonitoredFolderTable).all()
         new_path = Path(root_path).resolve()
 
@@ -60,8 +69,6 @@ def _check_folder_conflicts(
                 pass
 
         return None
-    finally:
-        session.close()
 
 
 def _folder_to_response(folder: MonitoredFolderTable) -> MonitoredFolderResponse:
@@ -172,47 +179,44 @@ async def add_folder(
             detail=(
                 f"This folder conflicts with an existing monitored folder: "
                 f"{conflict}. Please remove one of the folders first."
+            ),
+        )
+
+    with db_session() as session:
+        # Check if already exists
+        existing = session.query(MonitoredFolderTable).filter_by(
+            root_path=request.root_path
+        ).first()
+        if existing:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Folder is already being monitored: {request.root_path}",
             )
+
+        # Combine ignore patterns
+        ignore_patterns = list(settings.default_ignore_patterns)
+        if request.ignore_patterns:
+            ignore_patterns.extend(request.ignore_patterns)
+
+        # Create folder record
+        folder_id = str(uuid4())
+        folder_name = Path(request.root_path).name or request.root_path
+
+        folder = MonitoredFolderTable(
+            id=folder_id,
+            root_path=request.root_path,
+            name=folder_name,
+            status=FolderStatus.IDLE.value,
+            generate_document_summaries=request.generate_document_summaries,
+            generate_image_descriptions=request.generate_image_descriptions,
+            extract_media_transcriptions=request.extract_media_transcriptions,
+            ignore_patterns=ignore_patterns,
+            created_at=datetime.now(),
         )
+        session.add(folder)
+        session.commit()
 
-    session = get_session()
-
-    # Check if already exists
-    existing = session.query(MonitoredFolderTable).filter_by(
-        root_path=request.root_path
-    ).first()
-    if existing:
-        session.close()
-        raise HTTPException(
-            status_code=409,
-            detail=f"Folder is already being monitored: {request.root_path}"
-        )
-
-    # Combine ignore patterns
-    ignore_patterns = list(settings.default_ignore_patterns)
-    if request.ignore_patterns:
-        ignore_patterns.extend(request.ignore_patterns)
-
-    # Create folder record
-    folder_id = str(uuid4())
-    folder_name = Path(request.root_path).name or request.root_path
-
-    folder = MonitoredFolderTable(
-        id=folder_id,
-        root_path=request.root_path,
-        name=folder_name,
-        status=FolderStatus.IDLE.value,
-        generate_document_summaries=request.generate_document_summaries,
-        generate_image_descriptions=request.generate_image_descriptions,
-        extract_media_transcriptions=request.extract_media_transcriptions,
-        ignore_patterns=ignore_patterns,
-        created_at=datetime.now(),
-    )
-    session.add(folder)
-    session.commit()
-
-    result = _folder_to_response(folder)
-    session.close()
+        result = _folder_to_response(folder)
 
     # Auto-sync in background
     background_tasks.add_task(
@@ -229,26 +233,21 @@ async def add_folder(
 @router.get("", response_model=List[MonitoredFolderResponse])
 async def list_folders():
     """List all monitored folders."""
-    session = get_session()
-    folders = session.query(MonitoredFolderTable).order_by(
-        MonitoredFolderTable.created_at.desc()
-    ).all()
-    result = [_folder_to_response(f) for f in folders]
-    session.close()
-    return result
+    with db_session() as session:
+        folders = session.query(MonitoredFolderTable).order_by(
+            MonitoredFolderTable.created_at.desc()
+        ).all()
+        return [_folder_to_response(f) for f in folders]
 
 
 @router.get("/{folder_id}", response_model=MonitoredFolderResponse)
 async def get_folder(folder_id: str):
     """Get details of a specific monitored folder."""
-    session = get_session()
-    folder = session.query(MonitoredFolderTable).filter_by(id=folder_id).first()
-    if not folder:
-        session.close()
-        raise HTTPException(status_code=404, detail=f"Folder not found: {folder_id}")
-    result = _folder_to_response(folder)
-    session.close()
-    return result
+    with db_session() as session:
+        folder = session.query(MonitoredFolderTable).filter_by(id=folder_id).first()
+        if not folder:
+            raise HTTPException(status_code=404, detail=f"Folder not found: {folder_id}")
+        return _folder_to_response(folder)
 
 
 @router.delete("/{folder_id}")
@@ -258,16 +257,13 @@ async def delete_folder(folder_id: str):
     This only removes the folder from the app's database.
     The actual files on disk are NOT deleted.
     """
-    session = get_session()
+    with db_session() as session:
+        folder = session.query(MonitoredFolderTable).filter_by(id=folder_id).first()
+        if not folder:
+            raise HTTPException(status_code=404, detail=f"Folder not found: {folder_id}")
 
-    folder = session.query(MonitoredFolderTable).filter_by(id=folder_id).first()
-    if not folder:
-        session.close()
-        raise HTTPException(status_code=404, detail=f"Folder not found: {folder_id}")
-
-    session.delete(folder)
-    session.commit()
-    session.close()
+        session.delete(folder)
+        session.commit()
 
     return {"message": "Folder removed from monitoring", "folder_id": folder_id}
 
@@ -279,38 +275,34 @@ async def sync_folder(
     background_tasks: BackgroundTasks = None
 ):
     """Sync a folder - detect and process new/modified/deleted files."""
-    session = get_session()
+    with db_session() as session:
+        folder = session.query(MonitoredFolderTable).filter_by(id=folder_id).first()
+        if not folder:
+            raise HTTPException(status_code=404, detail=f"Folder not found: {folder_id}")
 
-    folder = session.query(MonitoredFolderTable).filter_by(id=folder_id).first()
-    if not folder:
-        session.close()
-        raise HTTPException(status_code=404, detail=f"Folder not found: {folder_id}")
+        if folder.status == FolderStatus.SYNCING.value:
+            raise HTTPException(status_code=409, detail="Folder is already syncing")
 
-    if folder.status == FolderStatus.SYNCING.value:
-        session.close()
-        raise HTTPException(status_code=409, detail="Folder is already syncing")
+        # Determine AI processing settings (use request overrides if provided)
+        generate_document_summaries = folder.generate_document_summaries
+        generate_image_descriptions = folder.generate_image_descriptions
+        extract_media_transcriptions = folder.extract_media_transcriptions
 
-    # Determine AI processing settings (use request overrides if provided)
-    generate_document_summaries = folder.generate_document_summaries
-    generate_image_descriptions = folder.generate_image_descriptions
-    extract_media_transcriptions = folder.extract_media_transcriptions
+        if request:
+            if request.generate_document_summaries is not None:
+                generate_document_summaries = request.generate_document_summaries
+            if request.generate_image_descriptions is not None:
+                generate_image_descriptions = request.generate_image_descriptions
+            if request.extract_media_transcriptions is not None:
+                extract_media_transcriptions = request.extract_media_transcriptions
 
-    if request:
-        if request.generate_document_summaries is not None:
-            generate_document_summaries = request.generate_document_summaries
-        if request.generate_image_descriptions is not None:
-            generate_image_descriptions = request.generate_image_descriptions
-        if request.extract_media_transcriptions is not None:
-            extract_media_transcriptions = request.extract_media_transcriptions
+        # Reset progress counters
+        folder.processed_files = 0
+        folder.failed_files = 0
+        folder.status = FolderStatus.SYNCING.value
+        session.commit()
 
-    # Reset progress counters
-    folder.processed_files = 0
-    folder.failed_files = 0
-    folder.status = FolderStatus.SYNCING.value
-    session.commit()
-
-    result = _folder_to_response(folder)
-    session.close()
+        result = _folder_to_response(folder)
 
     # Start sync in background
     background_tasks.add_task(
@@ -334,18 +326,14 @@ async def cancel_sync(folder_id: str):
     # Signal cancellation immediately via in-memory flag
     CancellationManager.cancel(folder_id)
 
-    session = get_session()
+    with db_session() as session:
+        folder = session.query(MonitoredFolderTable).filter_by(id=folder_id).first()
+        if not folder:
+            raise HTTPException(status_code=404, detail=f"Folder not found: {folder_id}")
 
-    folder = session.query(MonitoredFolderTable).filter_by(id=folder_id).first()
-    if not folder:
-        session.close()
-        raise HTTPException(status_code=404, detail=f"Folder not found: {folder_id}")
-
-    if folder.status == FolderStatus.SYNCING.value:
-        folder.status = FolderStatus.CANCELLED.value
-        session.commit()
-
-    session.close()
+        if folder.status == FolderStatus.SYNCING.value:
+            folder.status = FolderStatus.CANCELLED.value
+            session.commit()
     return {"folder_id": folder_id, "status": "cancelled"}
 
 
@@ -356,9 +344,8 @@ async def get_processing_files(folder_id: str):
     Returns a list of files that are actively being processed during sync.
     This enables real-time UI updates showing which files are being worked on.
     """
-    session = get_session()
-    folder = session.query(MonitoredFolderTable).filter_by(id=folder_id).first()
-    session.close()
+    with db_session() as session:
+        folder = session.query(MonitoredFolderTable).filter_by(id=folder_id).first()
 
     if not folder:
         raise HTTPException(status_code=404, detail=f"Folder not found: {folder_id}")

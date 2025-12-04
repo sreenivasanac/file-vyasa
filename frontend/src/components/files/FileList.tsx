@@ -1,24 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  RefreshCw,
-  Trash2,
-  Clock,
-  CheckCircle,
-  Loader,
-  AlertCircle,
-  Play,
-} from 'lucide-react';
 import { api } from '@/api/client';
 import { useAppStore } from '@/stores/appStore';
 import { FileFilters } from './FileFilters';
 import { FolderTree } from './FolderTree';
 import { SyncProgress } from '@/components/folders/SyncProgress';
-import { Badge } from '@/components/common/Badge';
+import { FolderInfoCard } from '@/components/folders/FolderInfoCard';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Spinner } from '@/components/common/Spinner';
-import { formatDate } from '@/lib/utils';
-import type { FileCategory, FolderStatus } from '@/types';
+import type { FileCategory } from '@/types';
 
 export function FileList() {
   const {
@@ -39,7 +29,7 @@ export function FileList() {
   const [isSyncingFolder, setIsSyncingFolder] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const pageSize = 500; // Larger page size for tree view
+  const pageSize = 500;
 
   const currentFolder = folders.find((f) => f.id === currentFolderId);
 
@@ -77,10 +67,6 @@ export function FileList() {
     }
   };
 
-  const handleDeleteClick = () => {
-    setShowDeleteConfirm(true);
-  };
-
   const handleConfirmDelete = async () => {
     if (!currentFolderId) return;
     setIsDeleting(true);
@@ -97,10 +83,6 @@ export function FileList() {
     }
   };
 
-  const handleCancelDelete = () => {
-    setShowDeleteConfirm(false);
-  };
-
   if (!currentFolderId) {
     return (
       <div className="flex h-full items-center justify-center text-text-muted">
@@ -111,59 +93,15 @@ export function FileList() {
 
   return (
     <div className="flex h-full flex-col">
-      {/* Folder Info Header */}
+      {/* Shared Folder Info Header */}
       {currentFolder && (
-        <div className="border-b border-border bg-bg-secondary px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <h2 className="text-lg font-semibold text-text-primary">
-                {currentFolder.name}
-              </h2>
-              <StatusBadge status={currentFolder.status} />
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleSync}
-                disabled={currentFolder.status === 'syncing' || isSyncingFolder}
-                className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-text-secondary hover:bg-bg-tertiary disabled:opacity-50"
-                title={currentFolder.status === 'cancelled' ? 'Continue sync' : 'Sync folder'}
-              >
-                {currentFolder.status === 'cancelled' ? (
-                  <Play className="h-4 w-4" />
-                ) : (
-                  <RefreshCw
-                    className={`h-4 w-4 ${
-                      currentFolder.status === 'syncing' || isSyncingFolder
-                        ? 'animate-spin'
-                        : ''
-                    }`}
-                  />
-                )}
-                {currentFolder.status === 'cancelled' ? 'Continue' : 'Sync'}
-              </button>
-              <button
-                onClick={handleDeleteClick}
-                disabled={isDeleting}
-                className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-error hover:bg-error/10 disabled:opacity-50"
-                title="Remove folder"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-          <div className="mt-2 flex items-center gap-4 text-xs text-text-muted">
-            <span>{currentFolder.total_files} files</span>
-            {currentFolder.last_synced_at && (
-              <span className="flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                Last synced: {formatDate(currentFolder.last_synced_at)}
-              </span>
-            )}
-            {currentFolder.last_llm_model && (
-              <span>Model: {currentFolder.last_llm_model}</span>
-            )}
-          </div>
-        </div>
+        <FolderInfoCard
+          folder={currentFolder}
+          onSync={handleSync}
+          onDelete={() => setShowDeleteConfirm(true)}
+          isSyncingAction={isSyncingFolder}
+          isDeleting={isDeleting}
+        />
       )}
 
       <div className="border-b border-border p-4">
@@ -208,7 +146,10 @@ export function FileList() {
       </div>
 
       <div className="border-t border-border px-4 py-2 text-xs text-text-muted">
-        {(isSyncing ? syncProgress.total : currentFolder?.total_files) ?? data?.total ?? 0} files total
+        {(isSyncing ? syncProgress.total : currentFolder?.total_files) ??
+          data?.total ??
+          0}{' '}
+        files total
       </div>
 
       <ConfirmDialog
@@ -217,49 +158,17 @@ export function FileList() {
         message={
           <>
             Remove this folder from monitoring?{' '}
-            <span className="font-medium text-text-primary">Your files will not be deleted.</span>
+            <span className="font-medium text-text-primary">
+              Your files will not be deleted.
+            </span>
           </>
         }
         confirmText="Yes"
         cancelText="Cancel"
         variant="danger"
         onConfirm={handleConfirmDelete}
-        onCancel={handleCancelDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
       />
     </div>
   );
-}
-
-function StatusBadge({ status }: { status: FolderStatus }) {
-  switch (status) {
-    case 'idle':
-      return (
-        <Badge variant="success">
-          <CheckCircle className="mr-1 h-3 w-3" />
-          Ready
-        </Badge>
-      );
-    case 'syncing':
-      return (
-        <Badge variant="info">
-          <Loader className="mr-1 h-3 w-3 animate-spin" />
-          Syncing
-        </Badge>
-      );
-    case 'error':
-      return (
-        <Badge variant="error">
-          <AlertCircle className="mr-1 h-3 w-3" />
-          Error
-        </Badge>
-      );
-    case 'cancelled':
-      return (
-        <Badge variant="warning">
-          Cancelled
-        </Badge>
-      );
-    default:
-      return <Badge>{status}</Badge>;
-  }
 }

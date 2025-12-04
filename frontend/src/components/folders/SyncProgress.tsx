@@ -1,128 +1,53 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Cpu, Square, Play, AlertTriangle, FileText } from 'lucide-react';
 import { Spinner } from '@/components/common/Spinner';
 import { Button } from '@/components/common/Button';
+import { SyncProgressBar } from '@/components/common/SyncProgressBar';
 import { useAppStore } from '@/stores/appStore';
+import { useSyncPolling } from '@/hooks/useSyncPolling';
 import { api } from '@/api/client';
+import { formatDuration } from '@/lib/utils';
 
-interface ProcessingFile {
-  path: string;
-  filename: string;
+/**
+ * Compute ETA label from sync progress using moving average calculation.
+ */
+function computeEtaLabel(syncProgress: {
+  total: number;
+  processed: number;
+  startTime: number | null;
+  processingTimes: number[];
+}): string | null {
+  const { processed, total, startTime, processingTimes } = syncProgress;
+  if (!startTime || processed < 3) return null;
+
+  const remaining = total - processed;
+  if (remaining <= 0) return null;
+
+  // Use moving average if available, otherwise fall back to overall average
+  const avgTimePerFile = processingTimes.length > 0
+    ? processingTimes.reduce((a, b) => a + b, 0) / processingTimes.length
+    : (Date.now() - startTime) / processed;
+
+  const etaMs = avgTimePerFile * remaining;
+
+  return `~${formatDuration(etaMs)} remaining`;
 }
 
 export function SyncProgress() {
-  const {
-    currentFolderId,
-    isSyncing,
-    syncProgress,
-    setSyncProgress,
-    setIsSyncing,
-    clearSyncTiming,
-    folders,
-  } = useAppStore();
-
+  const { currentFolderId, isSyncing, syncProgress, setIsSyncing, folders } =
+    useAppStore();
   const queryClient = useQueryClient();
   const [isCancelling, setIsCancelling] = useState(false);
   const [isContinuing, setIsContinuing] = useState(false);
-  const [eta, setEta] = useState<string | null>(null);
-  const [processingFiles, setProcessingFiles] = useState<ProcessingFile[]>([]);
-  const clearSyncTimingRef = useRef(clearSyncTiming);
-  
+
   const currentFolder = folders.find((f) => f.id === currentFolderId);
-  
-  // Keep ref updated
-  useEffect(() => {
-    clearSyncTimingRef.current = clearSyncTiming;
-  }, [clearSyncTiming]);
+  const { processingFiles } = useSyncPolling(currentFolderId, isSyncing);
 
-  const formatETA = useCallback((ms: number): string => {
-    if (ms < 60000) return `${Math.ceil(ms / 1000)}s`;
-    if (ms < 3600000) {
-      const mins = Math.floor(ms / 60000);
-      const secs = Math.ceil((ms % 60000) / 1000);
-      return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
-    }
-    const hours = Math.floor(ms / 3600000);
-    const mins = Math.ceil((ms % 3600000) / 60000);
-    return `${hours}h ${mins}m`;
-  }, []);
-
-  // Fetch current LLM config to show model being used
   const { data: config } = useQuery({
     queryKey: ['config'],
     queryFn: api.config.get,
   });
-
-  useEffect(() => {
-    if (!currentFolderId || !isSyncing) {
-      setProcessingFiles([]);
-      return;
-    }
-
-    const pollInterval = setInterval(async () => {
-      try {
-        // Fetch folder status and processing files in parallel
-        const [folder, processingData] = await Promise.all([
-          api.folders.get(currentFolderId),
-          api.folders.getProcessing(currentFolderId),
-        ]);
-
-        setSyncProgress({
-          total: folder.total_files,
-          processed: folder.processed_files,
-          failed: folder.failed_files,
-        });
-
-        setProcessingFiles(processingData.processing_files);
-
-        if (folder.status === 'idle' || folder.status === 'error' || folder.status === 'cancelled') {
-          setIsSyncing(false);
-          setIsCancelling(false);
-          setProcessingFiles([]);
-          clearSyncTimingRef.current();
-          // Refresh folders list and files
-          queryClient.invalidateQueries({ queryKey: ['folders'] });
-          queryClient.invalidateQueries({ queryKey: ['files'] });
-        }
-      } catch (err) {
-        console.error('Failed to poll folder status:', err);
-      }
-    }, 1000);
-
-    return () => clearInterval(pollInterval);
-  }, [currentFolderId, isSyncing, setSyncProgress, setIsSyncing, queryClient]);
-  
-  // Calculate ETA in an effect to avoid impure Date.now() during render
-  const calculateEta = useCallback(() => {
-    const { processed, total, startTime, processingTimes } = syncProgress;
-    if (!startTime || processed < 3) return null;
-    
-    const remaining = total - processed;
-    if (remaining <= 0) return null;
-    
-    const avgTimePerFile = processingTimes.length > 0
-      ? processingTimes.reduce((a, b) => a + b, 0) / processingTimes.length
-      : (Date.now() - startTime) / processed;
-    
-    const etaMs = avgTimePerFile * remaining;
-    return `~${formatETA(etaMs)} remaining`;
-  }, [syncProgress, formatETA]);
-  
-  useEffect(() => {
-    if (!isSyncing) {
-      // Use a timeout to avoid synchronous setState in effect body
-      const timeout = setTimeout(() => setEta(null), 0);
-      return () => clearTimeout(timeout);
-    }
-    
-    // Update ETA every second via interval callback
-    const interval = setInterval(() => {
-      setEta(calculateEta());
-    }, 100); // Start quickly, then update every 100ms for responsiveness
-    
-    return () => clearInterval(interval);
-  }, [isSyncing, calculateEta]);
 
   const handleCancel = async () => {
     if (!currentFolderId || isCancelling) return;
@@ -149,20 +74,22 @@ export function SyncProgress() {
     }
   };
 
-  // Show paused state when folder is cancelled
   const isPaused = !isSyncing && currentFolder?.status === 'cancelled';
-  
+
   if (!isSyncing && !isPaused) return null;
 
-  // Use folder data for paused state, syncProgress for active sync
-  const displayTotal = isPaused ? (currentFolder?.total_files ?? 0) : syncProgress.total;
-  const displayProcessed = isPaused ? (currentFolder?.processed_files ?? 0) : syncProgress.processed;
-  const displayFailed = isPaused ? (currentFolder?.failed_files ?? 0) : syncProgress.failed;
-  
+  const displayTotal = isPaused
+    ? (currentFolder?.total_files ?? 0)
+    : syncProgress.total;
+  const displayProcessed = isPaused
+    ? (currentFolder?.processed_files ?? 0)
+    : syncProgress.processed;
+  const displayFailed = isPaused
+    ? (currentFolder?.failed_files ?? 0)
+    : syncProgress.failed;
   const progress =
-    displayTotal > 0
-      ? Math.round((displayProcessed / displayTotal) * 100)
-      : 0;
+    displayTotal > 0 ? Math.round((displayProcessed / displayTotal) * 100) : 0;
+  const eta = isSyncing ? computeEtaLabel(syncProgress) : null;
 
   // Paused state UI
   if (isPaused) {
@@ -187,14 +114,13 @@ export function SyncProgress() {
           </Button>
         </div>
 
-        <div className="mb-2 h-2 overflow-hidden rounded-full bg-bg-tertiary">
-          <div
-            className="h-full bg-warning transition-all duration-300"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
+        <SyncProgressBar
+          total={displayTotal}
+          processed={displayProcessed}
+          variant="warning"
+        />
 
-        <div className="flex justify-between text-xs text-text-muted">
+        <div className="mt-2 flex justify-between text-xs text-text-muted">
           <span>
             {displayProcessed} / {displayTotal} files processed
           </span>
@@ -221,7 +147,9 @@ export function SyncProgress() {
           {config && (
             <div className="flex items-center gap-1.5 text-xs text-text-muted">
               <Cpu className="h-3 w-3" />
-              <span>{config.llm.provider}/{config.llm.model}</span>
+              <span>
+                {config.llm.provider}/{config.llm.model}
+              </span>
             </div>
           )}
           <Button
@@ -237,14 +165,9 @@ export function SyncProgress() {
         </div>
       </div>
 
-      <div className="mb-2 h-2 overflow-hidden rounded-full bg-bg-tertiary">
-        <div
-          className="h-full bg-accent transition-all duration-300"
-          style={{ width: `${progress}%` }}
-        />
-      </div>
+      <SyncProgressBar total={displayTotal} processed={displayProcessed} />
 
-      <div className="flex justify-between text-xs text-text-muted">
+      <div className="mt-2 flex justify-between text-xs text-text-muted">
         <span>
           {displayProcessed} / {displayTotal} files processed
         </span>
@@ -255,20 +178,19 @@ export function SyncProgress() {
         <span>{progress}%</span>
       </div>
 
-      {/* Currently processing files */}
       {processingFiles.length > 0 && (
         <div className="mt-3 border-t border-border pt-3">
           <div className="mb-2 flex items-center gap-1.5 text-xs text-text-muted">
             <FileText className="h-3 w-3" />
             <span>Currently processing:</span>
           </div>
-          <div className="max-h-24 overflow-y-auto space-y-1">
+          <div className="max-h-24 space-y-1 overflow-y-auto">
             {processingFiles.slice(0, 5).map((file) => (
               <div
                 key={file.path}
-                className="flex items-center gap-2 text-xs text-text-secondary truncate"
+                className="flex items-center gap-2 truncate text-xs text-text-secondary"
               >
-                <Spinner size="xs" className="text-accent flex-shrink-0" />
+                <Spinner size="xs" className="flex-shrink-0 text-accent" />
                 <span className="truncate" title={file.path}>
                   {file.filename}
                 </span>

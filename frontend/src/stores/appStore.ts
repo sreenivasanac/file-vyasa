@@ -68,7 +68,7 @@ export const useAppStore = create<AppState>((set) => ({
     // Initialize start time on first progress update
     const startTime = prev.startTime ?? now;
     
-    // Calculate time for newly processed files
+    // Calculate time for newly processed files (moving average)
     let processingTimes = [...prev.processingTimes];
     let lastProcessedTime = prev.lastProcessedTime ?? now;
     
@@ -76,7 +76,6 @@ export const useAppStore = create<AppState>((set) => ({
     if (newlyProcessed > 0 && prev.lastProcessedTime !== null) {
       const elapsed = now - prev.lastProcessedTime;
       const avgTimePerNewFile = elapsed / newlyProcessed;
-      // Add time entries for each newly processed file
       for (let i = 0; i < newlyProcessed; i++) {
         processingTimes.push(avgTimePerNewFile);
       }

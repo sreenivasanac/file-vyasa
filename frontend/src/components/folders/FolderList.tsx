@@ -1,35 +1,31 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { openPath } from '@tauri-apps/plugin-opener';
-import { Folder, Plus, ExternalLink } from 'lucide-react';
+import { Folder, Plus } from 'lucide-react';
 import { api } from '@/api/client';
 import { useAppStore } from '@/stores/appStore';
+import { useFolderActions } from '@/hooks/useFolderActions';
 import { Spinner } from '@/components/common/Spinner';
 import { Button } from '@/components/common/Button';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { FolderStatusBadge } from './FolderStatusBadge';
 import { FolderInfoCard } from './FolderInfoCard';
-import { truncatePath } from '@/lib/utils';
 import type { MonitoredFolder } from '@/types';
 
 export function FolderList() {
-  const {
-    setCurrentFolder,
-    setCurrentView,
-    setFolders,
-    setIsSyncing,
-    setSyncProgress,
-  } = useAppStore();
+  const { setCurrentFolder, setCurrentView, setFolders, setIsSyncing, setSyncProgress } =
+    useAppStore();
   const queryClient = useQueryClient();
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [syncingId, setSyncingId] = useState<string | null>(null);
-  const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
 
-  const {
-    data: folders,
-    isLoading,
-    refetch,
-  } = useQuery({
+  const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
+  const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
+
+  // Use shared hook for folder actions (only for delete)
+  const { deleteFolder, isDeleting } = useFolderActions(activeFolderId, {
+    onAfterDelete: () => setFolderToDelete(null),
+  });
+  const [isSyncingFolder, setIsSyncingFolder] = useState(false);
+
+  const { data: folders, isLoading } = useQuery({
     queryKey: ['folders'],
     queryFn: () => api.folders.list(),
     refetchInterval: (query) => {
@@ -61,14 +57,16 @@ export function FolderList() {
   };
 
   const handleSync = async (folderId: string) => {
-    setSyncingId(folderId);
+    if (isSyncingFolder) return;
+    setActiveFolderId(folderId);
+    setIsSyncingFolder(true);
     try {
       await api.folders.sync(folderId);
-      refetch();
+      queryClient.invalidateQueries({ queryKey: ['folders'] });
     } catch (err) {
       console.error('Failed to sync folder:', err);
     } finally {
-      setSyncingId(null);
+      setIsSyncingFolder(false);
     }
   };
 
@@ -80,18 +78,14 @@ export function FolderList() {
     }
   };
 
+  const handleDeleteClick = (folderId: string) => {
+    setActiveFolderId(folderId);
+    setFolderToDelete(folderId);
+  };
+
   const confirmDelete = async () => {
-    if (!folderToDelete) return;
-    setDeletingId(folderToDelete);
+    await deleteFolder();
     setFolderToDelete(null);
-    try {
-      await api.folders.delete(folderToDelete);
-      queryClient.invalidateQueries({ queryKey: ['folders'] });
-    } catch (err) {
-      console.error('Failed to delete folder:', err);
-    } finally {
-      setDeletingId(null);
-    }
   };
 
   if (isLoading) {
@@ -133,45 +127,14 @@ export function FolderList() {
             onClick={() => handleSelectFolder(folder)}
             className="cursor-pointer rounded-lg border border-border bg-bg-secondary p-4 transition-colors hover:bg-bg-tertiary"
           >
-            {/* Folder name and path header */}
-            <div className="flex items-start justify-between">
-              <div className="flex min-w-0 flex-1 items-start gap-3">
-                <Folder className="mt-0.5 h-5 w-5 flex-shrink-0 text-accent" />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium text-text-primary">{folder.name}</p>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenFolder(folder.root_path);
-                      }}
-                      className="shrink-0 rounded p-1 text-text-muted hover:bg-bg-hover hover:text-text-primary"
-                      title="Open in Finder"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                  <p
-                    className="mt-0.5 truncate text-xs text-text-muted"
-                    title={folder.root_path}
-                  >
-                    {truncatePath(folder.root_path, 60)}
-                  </p>
-                </div>
-              </div>
-              <div className="ml-4 flex items-center gap-2">
-                <FolderStatusBadge status={folder.status} />
-              </div>
-            </div>
-
-            {/* Shared folder info card (compact mode) */}
             <FolderInfoCard
               folder={folder}
               onSync={() => handleSync(folder.id)}
-              onDelete={() => setFolderToDelete(folder.id)}
-              isSyncingAction={syncingId === folder.id}
-              isDeleting={deletingId === folder.id}
-              compact
+              onDelete={() => handleDeleteClick(folder.id)}
+              onOpenInFinder={() => handleOpenFolder(folder.root_path)}
+              isSyncingAction={activeFolderId === folder.id && isSyncingFolder}
+              isDeleting={activeFolderId === folder.id && isDeleting}
+              showFolderDetails
             />
           </div>
         ))}

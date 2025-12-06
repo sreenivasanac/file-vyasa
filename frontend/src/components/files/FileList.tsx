@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/client';
 import { useAppStore } from '@/stores/appStore';
+import { useFolderActions } from '@/hooks/useFolderActions';
+import { useSyncPolling } from '@/hooks/useSyncPolling';
 import { FileFilters } from './FileFilters';
 import { FolderTree } from './FolderTree';
-import { SyncProgress } from '@/components/folders/SyncProgress';
 import { FolderInfoCard } from '@/components/folders/FolderInfoCard';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Spinner } from '@/components/common/Spinner';
@@ -22,16 +23,28 @@ export function FileList() {
     setCurrentFolder,
     setCurrentView,
   } = useAppStore();
-  const queryClient = useQueryClient();
 
   const [category, setCategory] = useState<FileCategory | undefined>();
   const [search, setSearch] = useState('');
-  const [isSyncingFolder, setIsSyncingFolder] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const pageSize = 500;
 
   const currentFolder = folders.find((f) => f.id === currentFolderId);
+
+  // Use shared hook for folder actions
+  const { syncFolder, deleteFolder, isSyncing: isSyncingAction, isDeleting } =
+    useFolderActions(currentFolderId, {
+      onAfterSync: () => refetch(),
+      onAfterDelete: () => {
+        setCurrentFolder(null, null);
+        setCurrentView('folders');
+      },
+    });
+
+  // Use sync polling to get currently processing files
+  const { processingFiles } = useSyncPolling(currentFolderId, isSyncing);
+  const processingFilePaths = processingFiles.map((f) => f.path);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['files', currentFolderId, category, search],
@@ -47,40 +60,35 @@ export function FileList() {
     refetchInterval: isSyncing ? 2000 : false,
   });
 
+  // Refetch files when sync completes
   useEffect(() => {
     if (!isSyncing) {
       refetch();
     }
   }, [isSyncing, refetch]);
 
-  const handleSync = async () => {
-    if (!currentFolderId) return;
-    setIsSyncingFolder(true);
+  // Reset cancelling state when sync stops (deferred to avoid sync setState in effect)
+  useEffect(() => {
+    if (!isSyncing && isCancelling) {
+      const timeout = setTimeout(() => setIsCancelling(false), 0);
+      return () => clearTimeout(timeout);
+    }
+  }, [isSyncing, isCancelling]);
+
+  const handleCancel = async () => {
+    if (!currentFolderId || isCancelling) return;
+    setIsCancelling(true);
     try {
-      await api.folders.sync(currentFolderId);
-      queryClient.invalidateQueries({ queryKey: ['folders'] });
-      refetch();
+      await api.folders.cancel(currentFolderId);
     } catch (err) {
-      console.error('Failed to sync folder:', err);
-    } finally {
-      setIsSyncingFolder(false);
+      console.error('Failed to cancel sync:', err);
+      setIsCancelling(false);
     }
   };
 
   const handleConfirmDelete = async () => {
-    if (!currentFolderId) return;
-    setIsDeleting(true);
     setShowDeleteConfirm(false);
-    try {
-      await api.folders.delete(currentFolderId);
-      queryClient.invalidateQueries({ queryKey: ['folders'] });
-      setCurrentFolder(null, null);
-      setCurrentView('folders');
-    } catch (err) {
-      console.error('Failed to delete folder:', err);
-    } finally {
-      setIsDeleting(false);
-    }
+    await deleteFolder();
   };
 
   if (!currentFolderId) {
@@ -93,27 +101,28 @@ export function FileList() {
 
   return (
     <div className="flex h-full flex-col">
-      {/* Shared Folder Info Header */}
+      {/* Folder Info Header with integrated sync progress */}
       {currentFolder && (
         <FolderInfoCard
           folder={currentFolder}
-          onSync={handleSync}
+          onSync={syncFolder}
           onDelete={() => setShowDeleteConfirm(true)}
-          isSyncingAction={isSyncingFolder}
+          onCancel={handleCancel}
+          isSyncingAction={isSyncingAction}
           isDeleting={isDeleting}
+          isCancelling={isCancelling}
+          syncProgress={isSyncing ? syncProgress : undefined}
+          asHeader
         />
       )}
 
       <div className="border-b border-border p-4">
-        <SyncProgress />
-        <div className="mt-4">
-          <FileFilters
-            category={category}
-            onCategoryChange={setCategory}
-            search={search}
-            onSearchChange={setSearch}
-          />
-        </div>
+        <FileFilters
+          category={category}
+          onCategoryChange={setCategory}
+          search={search}
+          onSearchChange={setSearch}
+        />
       </div>
 
       <div className="flex-1 overflow-auto">
@@ -141,6 +150,7 @@ export function FileList() {
             isSyncing={isSyncing}
             totalFiles={isSyncing ? syncProgress.total : currentFolder?.total_files}
             processedFiles={isSyncing ? syncProgress.processed : currentFolder?.processed_files}
+            processingFilePaths={processingFilePaths}
           />
         ) : null}
       </div>

@@ -22,6 +22,7 @@ export function AddFolder() {
     setSyncProgress,
     setCurrentView,
     backendConnected,
+    addFolder,
   } = useAppStore();
 
   // Fetch current LLM config
@@ -100,6 +101,9 @@ export function AddFolder() {
         extract_media_transcriptions: extractMediaTranscriptions,
       });
 
+      // Add folder to store immediately so FileList can display it
+      addFolder(folder);
+
       // Folder is auto-syncing after add
       setCurrentFolder(folder.id, folder.root_path);
       setIsSyncing(true);
@@ -109,7 +113,7 @@ export function AddFolder() {
         failed: folder.failed_files,
       });
 
-      // Invalidate folders list
+      // Invalidate folders list (will refresh in background)
       queryClient.invalidateQueries({ queryKey: ['folders'] });
 
       // Navigate to files view

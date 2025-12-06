@@ -42,11 +42,102 @@ class SyncService:
         self.extract_media_transcriptions = extract_media_transcriptions
         self.progress = SyncProgress()
 
+    def _create_processor(self) -> FileProcessor:
+        """Initialize AI processors based on settings."""
+        summarizer = Summarizer() if self.generate_document_summaries else None
+        image_describer = ImageDescriber() if self.generate_image_descriptions else None
+        transcriber = MediaTranscriber() if self.extract_media_transcriptions else None
+
+        return FileProcessor(
+            summarizer=summarizer,
+            image_describer=image_describer,
+            transcriber=transcriber,
+            generate_document_summaries=self.generate_document_summaries,
+        )
+
+    def _scan_filesystem(self, folder) -> List[FileObject]:
+        """Scan filesystem and return list of files."""
+        ignore_patterns = (
+            list(folder.ignore_patterns or []) + list(settings.default_ignore_patterns)
+        )
+        scanner = Scanner(ignore_patterns=ignore_patterns, folder_id=self.folder_id)
+        return scanner.scan_to_list(folder.root_path, recursive=True)
+
+    def _process_files(
+        self,
+        session,
+        folder,
+        files_to_process: List,
+        processor: FileProcessor,
+    ):
+        """Process new/modified files with parallel workers."""
+        if not files_to_process:
+            return
+
+        workers = self._get_worker_count(len(files_to_process))
+        batch_pending = []
+
+        def on_file_complete(file_obj: FileObject, db_file, action: str):
+            if action == 'new':
+                self.progress.increment('new_count')
+            else:
+                self.progress.increment('modified_count')
+            update_file_record(db_file, file_obj)
+            self.progress.increment('processed')
+            batch_pending.append(file_obj)
+
+            if len(batch_pending) >= settings.sync_db_batch_size:
+                session.commit()
+                folder.processed_files = self.progress.processed
+                folder.failed_files = self.progress.failed
+                session.commit()
+                batch_pending.clear()
+
+        def is_cancelled() -> bool:
+            session.refresh(folder)
+            return folder.status == FolderStatus.CANCELLED.value
+
+        process_files_parallel(
+            files_to_process, processor, self.progress,
+            on_file_complete, is_cancelled, workers,
+            folder_id=self.folder_id
+        )
+
+        if batch_pending and folder.status != FolderStatus.CANCELLED.value:
+            session.commit()
+            folder.processed_files = self.progress.processed
+            folder.failed_files = self.progress.failed
+            session.commit()
+
+    def _finalize_sync(self, session, folder, fs_paths_count: int, deleted_count: int):
+        """Update folder status after sync completes."""
+        session.refresh(folder)
+        if folder.status != FolderStatus.CANCELLED.value:
+            folder.status = FolderStatus.IDLE.value
+            folder.last_synced_at = datetime.now()
+            if self.generate_document_summaries or self.generate_image_descriptions:
+                folder.last_llm_model = f"{settings.llm_provider}/{settings.llm_model}"
+
+        folder.total_files = fs_paths_count - deleted_count
+        folder.processed_files = self.progress.processed
+        folder.failed_files = self.progress.failed
+        session.commit()
+
+        ProcessingTracker.remove(self.folder_id)
+        CancellationManager.cleanup(self.folder_id)
+
+        logger.info(
+            "sync_complete",
+            folder_id=self.folder_id,
+            new=self.progress.new_count,
+            modified=self.progress.modified_count,
+            unchanged=self.progress.unchanged_count,
+            failed=self.progress.failed,
+        )
+
     def run(self):
         """Execute folder sync. Call this from a background task."""
-        # Reset cancellation flag at the start of sync
         CancellationManager.reset(self.folder_id)
-
         session = get_session()
 
         try:
@@ -57,17 +148,7 @@ class SyncService:
             folder.status = FolderStatus.SYNCING.value
             session.commit()
 
-            # Initialize AI processors based on settings
-            summarizer = Summarizer() if self.generate_document_summaries else None
-            image_describer = ImageDescriber() if self.generate_image_descriptions else None
-            transcriber = MediaTranscriber() if self.extract_media_transcriptions else None
-
-            processor = FileProcessor(
-                summarizer=summarizer,
-                image_describer=image_describer,
-                transcriber=transcriber,
-                generate_document_summaries=self.generate_document_summaries,
-            )
+            processor = self._create_processor()
 
             # Load existing files from DB
             all_db_files = session.query(FileObjectTable).filter_by(folder_id=self.folder_id).all()
@@ -75,93 +156,30 @@ class SyncService:
             existing_by_path = {f.path: f for f in all_db_files}
 
             # Scan filesystem
-            ignore_patterns = (
-                list(folder.ignore_patterns or []) + list(settings.default_ignore_patterns)
-            )
-            scanner = Scanner(ignore_patterns=ignore_patterns, folder_id=self.folder_id)
-            fs_files = scanner.scan_to_list(folder.root_path, recursive=True)
+            fs_files = self._scan_filesystem(folder)
             fs_inodes = {f.inode for f in fs_files if f.inode}
             fs_paths = {f.path for f in fs_files}
 
             folder.total_files = len(fs_files)
             session.commit()
 
-            # Categorize files
-            files_to_process = self._categorize_files(fs_files, existing_by_inode, existing_by_path)
+            # Categorize files and create pending records for new files
+            files_to_process, _ = self._categorize_files(
+                session, fs_files, existing_by_inode, existing_by_path
+            )
 
-            # Commit path updates for unchanged files
             session.commit()
             folder.processed_files = self.progress.processed
             session.commit()
 
             # Process new/modified files
-            if files_to_process:
-                workers = self._get_worker_count(len(files_to_process))
-                batch_pending = []
-
-                def on_file_complete(file_obj: FileObject, db_file, action: str):
-                    if action == 'new':
-                        self.progress.increment('new_count')
-                        session.add(create_file_record(file_obj, self.folder_id))
-                    else:
-                        self.progress.increment('modified_count')
-                        update_file_record(db_file, file_obj)
-                    self.progress.increment('processed')
-                    batch_pending.append(file_obj)
-
-                    # Commit in batches for UI responsiveness
-                    if len(batch_pending) >= settings.sync_db_batch_size:
-                        session.commit()
-                        folder.processed_files = self.progress.processed
-                        folder.failed_files = self.progress.failed
-                        session.commit()
-                        batch_pending.clear()
-
-                def is_cancelled() -> bool:
-                    session.refresh(folder)
-                    return folder.status == FolderStatus.CANCELLED.value
-
-                process_files_parallel(
-                    files_to_process, processor, self.progress,
-                    on_file_complete, is_cancelled, workers,
-                    folder_id=self.folder_id
-                )
-
-                # Final batch commit
-                if batch_pending and folder.status != FolderStatus.CANCELLED.value:
-                    session.commit()
-                    folder.processed_files = self.progress.processed
-                    folder.failed_files = self.progress.failed
-                    session.commit()
+            self._process_files(session, folder, files_to_process, processor)
 
             # Delete files no longer on disk
             deleted_count = self._delete_removed_files(session, all_db_files, fs_inodes, fs_paths)
 
-            # Update folder status
-            session.refresh(folder)
-            if folder.status != FolderStatus.CANCELLED.value:
-                folder.status = FolderStatus.IDLE.value
-                folder.last_synced_at = datetime.now()
-                if self.generate_document_summaries or self.generate_image_descriptions:
-                    folder.last_llm_model = f"{settings.llm_provider}/{settings.llm_model}"
-
-            folder.total_files = len(fs_paths) - deleted_count
-            folder.processed_files = self.progress.processed
-            folder.failed_files = self.progress.failed
-            session.commit()
-
-            # Clean up processing tracker and cancellation flag
-            ProcessingTracker.remove(self.folder_id)
-            CancellationManager.cleanup(self.folder_id)
-
-            logger.info(
-                "sync_complete",
-                folder_id=self.folder_id,
-                new=self.progress.new_count,
-                modified=self.progress.modified_count,
-                unchanged=self.progress.unchanged_count,
-                failed=self.progress.failed,
-            )
+            # Finalize
+            self._finalize_sync(session, folder, len(fs_paths), deleted_count)
 
         except Exception as e:
             import traceback
@@ -171,7 +189,6 @@ class SyncService:
             if folder:
                 folder.status = FolderStatus.ERROR.value
                 session.commit()
-            # Clean up processing tracker and cancellation flag on error
             ProcessingTracker.remove(self.folder_id)
             CancellationManager.cleanup(self.folder_id)
         finally:
@@ -179,18 +196,29 @@ class SyncService:
 
     def _categorize_files(
         self,
+        session,
         fs_files: List[FileObject],
         existing_by_inode: dict,
         existing_by_path: dict,
-    ) -> List[Tuple[FileObject, Optional[any], str]]:
-        """Categorize files into new, modified, or unchanged."""
+    ) -> Tuple[List[Tuple[FileObject, Optional[any], str]], dict]:
+        """Categorize files into new, modified, or unchanged.
+
+        For new files, creates pending DB records immediately so they appear in UI.
+        Returns (files_to_process, new_db_files_by_path).
+        """
         files_to_process = []
+        new_db_files = {}  # path -> db_file for newly created pending records
 
         for file_obj in fs_files:
             db_file = existing_by_inode.get(file_obj.inode) or existing_by_path.get(file_obj.path)
 
             if db_file is None:
-                files_to_process.append((file_obj, None, 'new'))
+                # Create pending record immediately so file appears in UI
+                pending_record = create_file_record(file_obj, self.folder_id)
+                pending_record.extraction_status = 'pending'
+                session.add(pending_record)
+                new_db_files[file_obj.path] = pending_record
+                files_to_process.append((file_obj, pending_record, 'new'))
             elif (
                 file_obj.modified_at
                 and db_file.modified_at
@@ -205,7 +233,7 @@ class SyncService:
                 self.progress.increment('unchanged_count')
                 self.progress.increment('processed')
 
-        return files_to_process
+        return files_to_process, new_db_files
 
     def _get_worker_count(self, file_count: int) -> int:
         """Determine number of workers based on settings and file count."""

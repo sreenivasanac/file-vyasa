@@ -13,6 +13,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException
 from filevyasa.config import settings
 from filevyasa.db.connection import get_session
 from filevyasa.db.tables import MonitoredFolderTable
+from filevyasa.llm import check_llava_available
 from filevyasa.models.enums import FolderStatus
 from filevyasa.models.folder import (
     FolderSyncRequest,
@@ -91,39 +92,7 @@ def _folder_to_response(folder: MonitoredFolderTable) -> MonitoredFolderResponse
     )
 
 
-async def _check_llava_available() -> dict:
-    """Check if Ollama llava model is available."""
-    import httpx
 
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.get("http://localhost:11434/api/tags")
-            if response.status_code != 200:
-                return {
-                    "available": False,
-                    "reason": "Ollama is not running. Start it with: ollama serve"
-                }
-
-            models = response.json().get("models", [])
-            llava_available = any(
-                m.get("name", "").startswith("llava") for m in models
-            )
-
-            if llava_available:
-                return {"available": True, "reason": None}
-            else:
-                return {
-                    "available": False,
-                    "reason": "llava model not installed. Run: ollama pull llava"
-                }
-
-    except httpx.ConnectError:
-        return {
-            "available": False,
-            "reason": "Cannot connect to Ollama. Start it with: ollama serve"
-        }
-    except Exception as e:
-        return {"available": False, "reason": f"Error checking Ollama: {e}"}
 
 
 def _run_sync_task(
@@ -164,7 +133,7 @@ async def add_folder(
 
     # Check llava availability if image descriptions enabled
     if request.generate_image_descriptions:
-        llava_status = await _check_llava_available()
+        llava_status = await check_llava_available()
         if not llava_status["available"]:
             raise HTTPException(
                 status_code=400,

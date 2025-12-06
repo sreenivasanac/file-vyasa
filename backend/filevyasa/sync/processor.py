@@ -154,53 +154,52 @@ class FileProcessor:
 
     def _route_to_ai_processor(self, file_obj: FileObject) -> FileObject:
         """Route file to appropriate AI processor based on category."""
-        is_non_content = (
-            file_obj.content_preview and
-            file_obj.metadata.get("extraction_method") == "skipped"
-        )
-
         category = file_obj.category
         category_value = category.value if hasattr(category, 'value') else str(category)
 
-        # Image files - use vision model
         if category_value == FileCategory.IMAGE.value:
-            if self.image_describer:
-                return self.image_describer.describe(file_obj)
-            elif is_non_content:
-                return self._set_summary_from_preview(file_obj)
-
-        # Audio/Video files - transcribe and optionally summarize
+            return self._process_image(file_obj)
         elif category_value in [FileCategory.AUDIO.value, FileCategory.VIDEO.value]:
-            if self.transcriber:
-                file_obj = self.transcriber.transcribe(file_obj)
-                # Check if transcription was successful (has actual text, not error)
-                has_transcription = (
-                    file_obj.content_preview
-                    and not file_obj.content_preview.startswith("[")
-                )
-                if self.summarizer and has_transcription and self.generate_document_summaries:
-                    file_obj = self.summarizer.summarize(file_obj)
-                return file_obj
-            elif is_non_content:
-                return self._set_summary_from_preview(file_obj)
-
-        # Document/Text files - use summarizer
-        elif category_value in [
-            FileCategory.DOCUMENT.value, FileCategory.TEXT.value,
-            FileCategory.SPREADSHEET.value, FileCategory.PRESENTATION.value
-        ]:
-            if is_non_content:
-                return self._set_summary_from_preview(file_obj, clear_model=True)
-            elif self.summarizer and file_obj.content_preview:
-                return self.summarizer.summarize(file_obj)
-
-        # Other file types
+            return self._process_media(file_obj)
         else:
-            if is_non_content:
-                return self._set_summary_from_preview(file_obj, clear_model=True)
-            elif self.summarizer and file_obj.content_preview:
-                return self.summarizer.summarize(file_obj)
+            return self._process_document(file_obj)
 
+    def _is_non_content_file(self, file_obj: FileObject) -> bool:
+        """Check if file was skipped during extraction (no real content)."""
+        return (
+            file_obj.content_preview
+            and file_obj.metadata.get("extraction_method") == "skipped"
+        )
+
+    def _process_image(self, file_obj: FileObject) -> FileObject:
+        """Process image files with vision model."""
+        if self.image_describer:
+            return self.image_describer.describe(file_obj)
+        if self._is_non_content_file(file_obj):
+            return self._set_summary_from_preview(file_obj)
+        return file_obj
+
+    def _process_media(self, file_obj: FileObject) -> FileObject:
+        """Process audio/video files with transcription."""
+        if self.transcriber:
+            file_obj = self.transcriber.transcribe(file_obj)
+            has_transcription = (
+                file_obj.content_preview
+                and not file_obj.content_preview.startswith("[")
+            )
+            if self.summarizer and has_transcription and self.generate_document_summaries:
+                file_obj = self.summarizer.summarize(file_obj)
+            return file_obj
+        if self._is_non_content_file(file_obj):
+            return self._set_summary_from_preview(file_obj)
+        return file_obj
+
+    def _process_document(self, file_obj: FileObject) -> FileObject:
+        """Process document/text files with summarizer."""
+        if self._is_non_content_file(file_obj):
+            return self._set_summary_from_preview(file_obj, clear_model=True)
+        if self.summarizer and file_obj.content_preview:
+            return self.summarizer.summarize(file_obj)
         return file_obj
 
     def _set_summary_from_preview(

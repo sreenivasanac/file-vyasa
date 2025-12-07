@@ -155,7 +155,6 @@ export function FolderList() {
               onOpenInFinder={() => handleOpenFolder(folder.root_path)}
               isSyncingAction={activeFolderId === folder.id && isSyncingFolder}
               isDeleting={activeFolderId === folder.id && isDeleting}
-              showFolderDetails
             />
           </div>
         ))}

@@ -1,7 +1,7 @@
 """Sync service - orchestrates folder synchronization."""
 
 from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import List
 
 import structlog
 
@@ -14,7 +14,8 @@ from filevyasa.models.enums import FolderStatus
 from filevyasa.models.file_object import FileObject
 from filevyasa.scanner import Scanner
 
-from .db_ops import create_file_record, update_file_record
+from .categorizer import categorize_files
+from .db_ops import update_file_record
 from .processor import (
     CancellationManager,
     FileProcessor,
@@ -178,8 +179,17 @@ class SyncService:
             session.commit()
 
             # Categorize files and create pending records for new files
-            files_to_process, _ = self._categorize_files(
-                session, fs_files, existing_by_inode, existing_by_path, folder
+            files_to_process, _ = categorize_files(
+                session=session,
+                fs_files=fs_files,
+                existing_by_inode=existing_by_inode,
+                existing_by_path=existing_by_path,
+                folder=folder,
+                progress=self.progress,
+                generate_document_summaries=self.generate_document_summaries,
+                generate_image_descriptions=self.generate_image_descriptions,
+                extract_media_transcriptions=self.extract_media_transcriptions,
+                folder_id=self.folder_id,
             )
 
             session.commit()
@@ -207,81 +217,6 @@ class SyncService:
             CancellationManager.cleanup(self.folder_id)
         finally:
             session.close()
-
-    def _categorize_files(
-        self,
-        session,
-        fs_files: List[FileObject],
-        existing_by_inode: dict,
-        existing_by_path: dict,
-        folder,
-    ) -> Tuple[List[Tuple[FileObject, Optional[any], str]], dict]:
-        """Categorize files into work queues based on timestamps and pending state.
-
-        Rules:
-        - Always process new files.
-        - Process pending files left from prior run.
-        - Re-process if file changed since last extraction.
-        - Re-run AI if enabled and stale vs. last AI run or current sync start.
-        - Otherwise mark unchanged and count it as processed for this run.
-        """
-        files_to_process = []
-        new_db_files = {}  # path -> db_file for newly created pending records
-
-        for file_obj in fs_files:
-            db_file = existing_by_inode.get(file_obj.inode) or existing_by_path.get(file_obj.path)
-
-            if db_file is None:
-                # Create pending record immediately so file appears in UI
-                # pending_record = create_file_record(file_obj, self.folder_id)
-                pending_record.extraction_status = 'pending'
-                session.add(pending_record)
-                new_db_files[file_obj.path] = pending_record
-                files_to_process.append((file_obj, pending_record, 'new'))
-                continue
-
-            # Track moves
-            if db_file.path != file_obj.path:
-                db_file.path = file_obj.path
-                db_file.filename = file_obj.filename
-
-            is_pending = db_file.extraction_status == 'pending'
-            modified_since_db = (
-                file_obj.modified_at
-                and db_file.modified_at
-                and file_obj.modified_at > db_file.modified_at
-            )
-
-            needs_extraction = is_pending or db_file.extraction_status != 'success'
-            last_extracted_at = getattr(db_file, 'last_extracted_at', None)
-            if last_extracted_at is None:
-                needs_extraction = True
-            elif file_obj.modified_at and file_obj.modified_at > last_extracted_at:
-                needs_extraction = True
-            elif modified_since_db:
-                needs_extraction = True
-
-            ai_enabled = (
-                self.generate_document_summaries
-                or self.generate_image_descriptions
-                or self.extract_media_transcriptions
-            )
-            last_ai_processed_at = getattr(db_file, 'last_ai_processed_at', None)
-            needs_ai = False
-            if ai_enabled:
-                if last_ai_processed_at is None:
-                    needs_ai = True
-                elif file_obj.modified_at and file_obj.modified_at > last_ai_processed_at:
-                    needs_ai = True
-
-            if is_pending or needs_extraction or needs_ai:
-                action = 'pending' if is_pending else 'modified'
-                files_to_process.append((file_obj, db_file, action))
-            else:
-                self.progress.increment('unchanged_count')
-                self.progress.increment('processed')
-
-        return files_to_process, new_db_files
 
     def _get_worker_count(self, file_count: int) -> int:
         """Determine number of workers based on settings and file count."""

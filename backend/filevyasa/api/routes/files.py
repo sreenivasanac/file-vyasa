@@ -65,6 +65,10 @@ def _format_size(size_bytes: int) -> str:
 
 def _build_file_response(file_obj: FileObjectTable) -> FileDetailResponse:
     """Build FileDetailResponse from a FileObjectTable instance."""
+    def _to_iso(dt):
+        """Convert datetime to ISO string, preserving None."""
+        return dt.isoformat() if dt else None
+
     path_parts = file_obj.path.rsplit("/", 1)
     parent_dir = path_parts[0] if len(path_parts) > 1 else ""
 
@@ -76,9 +80,9 @@ def _build_file_response(file_obj: FileObjectTable) -> FileDetailResponse:
         mime_type=file_obj.mime_type,
         size_bytes=file_obj.size_bytes,
         size_human=_format_size(file_obj.size_bytes),
-        created_at=file_obj.created_at,
-        modified_at=file_obj.modified_at,
-        accessed_at=file_obj.accessed_at,
+        created_at=_to_iso(file_obj.created_at),
+        modified_at=_to_iso(file_obj.modified_at),
+        accessed_at=_to_iso(file_obj.accessed_at),
         is_symlink=getattr(file_obj, 'is_symlink', False),
         category=file_obj.category,
         parent_dir=parent_dir,
@@ -91,10 +95,10 @@ def _build_file_response(file_obj: FileObjectTable) -> FileDetailResponse:
         extraction_status=getattr(file_obj, 'extraction_status', 'pending'),
         extraction_error=getattr(file_obj, 'extraction_error', None),
         is_password_protected=getattr(file_obj, 'is_password_protected', False),
-        last_extracted_at=getattr(file_obj, 'last_extracted_at', None),
-        last_ai_processed_at=getattr(file_obj, 'last_ai_processed_at', None),
-        scanned_at=getattr(file_obj, 'scanned_at', ""),
-        summarized_at=getattr(file_obj, 'summarized_at', None),
+        last_extracted_at=_to_iso(getattr(file_obj, 'last_extracted_at', None)),
+        last_ai_processed_at=_to_iso(getattr(file_obj, 'last_ai_processed_at', None)),
+        scanned_at=_to_iso(getattr(file_obj, 'scanned_at', None)) or "",
+        summarized_at=_to_iso(getattr(file_obj, 'summarized_at', None)),
     )
 
 

@@ -6,7 +6,9 @@ import {
   INITIAL_SYNC_PROGRESS,
 } from '@/lib/syncUtils';
 
-type View = 'add-folder' | 'folders' | 'files' | 'settings';
+export type View = 'add-folder' | 'folders' | 'files' | 'settings';
+
+export type SettingsSection = 'overview' | 'general' | 'ai' | 'integrations';
 
 interface AppState {
   // App config
@@ -16,6 +18,15 @@ interface AppState {
   // Navigation
   currentView: View;
   setCurrentView: (view: View) => void;
+
+  // Settings navigation
+  settingsSection: SettingsSection;
+  settingsContext: {
+    origin?: string;
+    highlight?: string;
+  } | null;
+  setSettingsSection: (section: SettingsSection, context?: { origin?: string; highlight?: string }) => void;
+  clearSettingsContext: () => void;
 
   // Folder state
   currentFolderId: string | null;
@@ -52,6 +63,13 @@ export const useAppStore = create<AppState>((set) => ({
   // Navigation
   currentView: 'folders',
   setCurrentView: (view) => set({ currentView: view }),
+
+  // Settings navigation
+  settingsSection: 'overview',
+  settingsContext: null,
+  setSettingsSection: (section, context) =>
+    set({ settingsSection: section, settingsContext: context ?? null }),
+  clearSettingsContext: () => set({ settingsContext: null }),
 
   // Folder state
   currentFolderId: null,

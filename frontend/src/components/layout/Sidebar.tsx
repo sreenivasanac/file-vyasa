@@ -18,7 +18,14 @@ const navItems: { id: View; label: string; icon: typeof FolderOpen }[] = [
 ];
 
 export function Sidebar() {
-  const { currentView, setCurrentView, backendConnected, appName } = useAppStore();
+  const {
+    currentView,
+    setCurrentView,
+    backendConnected,
+    appName,
+    setSettingsSection,
+    clearSettingsContext,
+  } = useAppStore();
 
   return (
     <aside className="flex h-full w-56 flex-col border-r border-border bg-bg-secondary">
@@ -37,7 +44,13 @@ export function Sidebar() {
           return (
             <button
               key={item.id}
-              onClick={() => setCurrentView(item.id)}
+              onClick={() => {
+                if (item.id === 'settings') {
+                  clearSettingsContext();
+                  setSettingsSection('overview');
+                }
+                setCurrentView(item.id);
+              }}
               className={cn(
                 'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
                 isActive

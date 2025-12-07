@@ -32,6 +32,8 @@ interface FolderTreeProps {
   isSyncing: boolean;
   totalFiles?: number;
   processedFiles?: number;
+  /** Paths of files currently being processed (for spinning animation) */
+  processingFilePaths?: string[];
 }
 
 function buildTree(files: FileObject[], rootPath: string): TreeNode {
@@ -45,7 +47,6 @@ function buildTree(files: FileObject[], rootPath: string): TreeNode {
   };
 
   for (const file of files) {
-    // Get relative path from root
     const relativePath = file.path.startsWith(rootPath)
       ? file.path.slice(rootPath.length + 1)
       : file.path;
@@ -53,7 +54,6 @@ function buildTree(files: FileObject[], rootPath: string): TreeNode {
     const parts = relativePath.split('/');
     let current = root;
 
-    // Navigate/create folder structure
     for (let i = 0; i < parts.length - 1; i++) {
       const part = parts[i];
       if (!current.children.has(part)) {
@@ -69,7 +69,6 @@ function buildTree(files: FileObject[], rootPath: string): TreeNode {
       current = current.children.get(part)!;
     }
 
-    // Add file
     const fileName = parts[parts.length - 1];
     current.children.set(fileName, {
       name: fileName,
@@ -82,7 +81,6 @@ function buildTree(files: FileObject[], rootPath: string): TreeNode {
     });
   }
 
-  // Calculate counts
   function updateCounts(node: TreeNode): { fileCount: number; completedCount: number } {
     if (!node.isFolder) {
       return { fileCount: node.fileCount, completedCount: node.completedCount };
@@ -106,6 +104,16 @@ function buildTree(files: FileObject[], rootPath: string): TreeNode {
   return root;
 }
 
+/**
+ * Check if any of the processing file paths are descendants of the given folder path.
+ */
+function hasProcessingDescendant(
+  folderPath: string,
+  processingFilePaths: string[]
+): boolean {
+  return processingFilePaths.some((filePath) => filePath.startsWith(folderPath + '/'));
+}
+
 export function FolderTree({
   files,
   rootPath,
@@ -114,6 +122,7 @@ export function FolderTree({
   isSyncing,
   totalFiles,
   processedFiles,
+  processingFilePaths = [],
 }: FolderTreeProps) {
   const tree = useMemo(() => buildTree(files, rootPath), [files, rootPath]);
 
@@ -128,6 +137,7 @@ export function FolderTree({
         defaultExpanded
         totalFiles={totalFiles}
         processedFiles={processedFiles}
+        processingFilePaths={processingFilePaths}
       />
     </div>
   );
@@ -142,7 +152,7 @@ interface TreeNodeComponentProps {
   defaultExpanded?: boolean;
   totalFiles?: number;
   processedFiles?: number;
-  isParentSyncing?: boolean; // True if any ancestor folder is still syncing
+  processingFilePaths: string[];
 }
 
 function TreeNodeComponent({
@@ -154,23 +164,19 @@ function TreeNodeComponent({
   defaultExpanded = false,
   totalFiles,
   processedFiles,
-  isParentSyncing = false,
+  processingFilePaths,
 }: TreeNodeComponentProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
-  // For root node (depth 0), use the actual folder totals if provided
   const isRootNode = depth === 0;
   const displayCount = isRootNode && totalFiles !== undefined ? totalFiles : node.fileCount;
   const displayCompleted = isRootNode && processedFiles !== undefined ? processedFiles : node.completedCount;
 
   const isCompleted = displayCount > 0 && displayCompleted === displayCount;
-  // A folder is processing if: it has known incomplete files, OR parent folder is syncing (may have files not yet in array)
-  const isProcessing = isSyncing && (displayCompleted < displayCount || isParentSyncing);
-  // Track if this folder or ancestors are syncing (to pass down to children)
-  const isFolderSyncing = isSyncing && (displayCompleted < displayCount || isParentSyncing);
+  // Folder is processing if it has any descendant currently being processed
+  const isProcessing = isSyncing && hasProcessingDescendant(node.path, processingFilePaths);
   const isSelected = node.file?.id === selectedFileId;
 
-  // Sort children: folders first, then files, alphabetically
   const sortedChildren = useMemo(() => {
     const children = Array.from(node.children.values());
     return children.sort((a, b) => {
@@ -227,7 +233,7 @@ function TreeNodeComponent({
           >
             <ExternalLink className="h-3.5 w-3.5" />
           </button>
-          <div className="flex-1" /> {/* Spacer to push StatusIndicator to the right */}
+          <div className="flex-1" />
           <StatusIndicator
             isCompleted={isCompleted}
             isProcessing={isProcessing}
@@ -245,7 +251,7 @@ function TreeNodeComponent({
                 selectedFileId={selectedFileId}
                 onSelectFile={onSelectFile}
                 isSyncing={isSyncing}
-                isParentSyncing={isFolderSyncing}
+                processingFilePaths={processingFilePaths}
               />
             ))}
           </div>
@@ -255,6 +261,8 @@ function TreeNodeComponent({
   }
 
   // File node
+  const isFileProcessing = processingFilePaths.includes(node.path);
+
   return (
     <div
       onClick={() => onSelectFile(isSelected ? null : node.file!.id)}
@@ -267,7 +275,7 @@ function TreeNodeComponent({
       )}
       style={{ paddingLeft: `${depth * 16 + 8}px` }}
     >
-      <div className="w-4" /> {/* Spacer for alignment */}
+      <div className="w-4" />
       <FileIcon category={node.file!.category} extension={node.file!.extension} className="h-4 w-4" />
       <span className="truncate" title={node.name}>
         {node.name}
@@ -279,8 +287,8 @@ function TreeNodeComponent({
       >
         <ExternalLink className="h-3.5 w-3.5" />
       </button>
-      <div className="flex-1" /> {/* Spacer to push status to the right */}
-      <FileStatusIndicator file={node.file!} isSyncing={isSyncing} />
+      <div className="flex-1" />
+      <FileStatusIndicator file={node.file!} isProcessing={isFileProcessing} />
     </div>
   );
 }
@@ -316,19 +324,19 @@ function StatusIndicator({
 
 function FileStatusIndicator({
   file,
-  isSyncing,
+  isProcessing,
 }: {
   file: FileObject;
-  isSyncing: boolean;
+  isProcessing: boolean;
 }) {
   const hasAISummary = !!file.ai_brief_summary;
 
-  if (hasAISummary) {
-    return <CheckCircle className="h-3.5 w-3.5 text-success" />;
+  if (isProcessing) {
+    return <Loader className="h-3.5 w-3.5 animate-spin text-accent" />;
   }
 
-  if (isSyncing) {
-    return <Loader className="h-3.5 w-3.5 animate-spin text-accent" />;
+  if (hasAISummary) {
+    return <CheckCircle className="h-3.5 w-3.5 text-success" />;
   }
 
   return <AlertCircle className="h-3.5 w-3.5 text-warning" />;

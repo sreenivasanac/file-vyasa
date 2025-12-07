@@ -5,7 +5,7 @@ from datetime import datetime
 import structlog
 
 from filevyasa.config import settings
-from filevyasa.models.enums import FilenameQuality
+from filevyasa.llm.response_parser import parse_llm_response
 from filevyasa.models.file_object import FileObject
 
 logger = structlog.get_logger()
@@ -162,14 +162,14 @@ class Summarizer:
 
             response = litellm.completion(**kwargs)
 
-            # Parse response
+            # Parse response using shared parser
             content = response.choices[0].message.content
-            result = self._parse_response(content, file_obj.extension)
+            result = parse_llm_response(content, file_obj.extension)
 
-            file_obj.ai_brief_summary = result.get("brief_summary", "")
-            file_obj.ai_summary = result.get("detailed_summary", "")
-            file_obj.filename_quality = result.get("filename_quality")
-            file_obj.suggested_filename = result.get("suggested_filename")
+            file_obj.ai_brief_summary = result.brief_summary
+            file_obj.ai_summary = result.detailed_summary
+            file_obj.filename_quality = result.filename_quality
+            file_obj.suggested_filename = result.suggested_filename
             file_obj.llm_model = model_name  # Store which model was used
             file_obj.summarized_at = datetime.now()
 
@@ -185,100 +185,6 @@ class Summarizer:
             file_obj.ai_summary = ""
 
         return file_obj
-
-    def _parse_response(self, content: str, file_extension: str) -> dict:
-        """Parse JSON response from LLM.
-
-        Handles various response formats:
-        - Clean JSON
-        - JSON wrapped in markdown code blocks
-        - Regex extraction as fallback
-        """
-        import json
-        import re
-
-        valid_qualities = {"good", "acceptable", "poor", "meaningless"}
-
-        def normalize_result(data: dict, ext: str) -> dict:
-            """Normalize and validate parsed data."""
-            result = {
-                "brief_summary": data.get("brief_summary", ""),
-                "detailed_summary": data.get("detailed_summary", ""),
-                "filename_quality": None,
-                "suggested_filename": None,
-            }
-
-            # Handle filename quality
-            quality = str(data.get("filename_quality", "")).lower().strip()
-            if quality in valid_qualities:
-                result["filename_quality"] = FilenameQuality(quality)
-
-            # Handle suggested filename - ensure it has the right extension
-            suggested = data.get("suggested_filename")
-            if suggested and isinstance(suggested, str):
-                suggested = suggested.strip()
-                # Ensure suggested filename has the correct extension
-                if ext and not suggested.lower().endswith(f".{ext.lower()}"):
-                    base = suggested.rsplit('.', 1)[0] if '.' in suggested else suggested
-                    suggested = f"{base}.{ext}"
-                result["suggested_filename"] = suggested
-
-            return result
-
-        # Try direct JSON parsing first
-        try:
-            parsed = json.loads(content)
-            return normalize_result(parsed, file_extension)
-        except json.JSONDecodeError:
-            pass
-
-        # Try to extract JSON from markdown code blocks
-        json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', content, re.DOTALL)
-        if json_match:
-            try:
-                parsed = json.loads(json_match.group(1))
-                return normalize_result(parsed, file_extension)
-            except json.JSONDecodeError:
-                pass
-
-        # Try to find JSON object in the text
-        json_match = re.search(r'\{[^{}]*"brief_summary"[^{}]*\}', content, re.DOTALL)
-        if json_match:
-            try:
-                parsed = json.loads(json_match.group(0))
-                return normalize_result(parsed, file_extension)
-            except json.JSONDecodeError:
-                pass
-
-        # Try regex extraction of values
-        brief_match = re.search(r'"brief_summary"\s*:\s*"([^"]*)"', content)
-        detailed_match = re.search(r'"detailed_summary"\s*:\s*"([^"]*)"', content)
-        quality_match = re.search(r'"filename_quality"\s*:\s*"([^"]*)"', content)
-        suggested_match = re.search(r'"suggested_filename"\s*:\s*"([^"]*)"', content)
-
-        if brief_match or detailed_match:
-            quality_val = quality_match.group(1).lower() if quality_match else None
-            return {
-                "brief_summary": brief_match.group(1) if brief_match else "",
-                "detailed_summary": detailed_match.group(1) if detailed_match else "",
-                "filename_quality": (
-                    FilenameQuality(quality_val) if quality_val in valid_qualities else None
-                ),
-                "suggested_filename": suggested_match.group(1) if suggested_match else None,
-            }
-
-        # Last resort: treat the whole content as a summary (cleaned)
-        # Remove any JSON-like formatting
-        cleaned = re.sub(r'[{}":]', '', content).strip()
-        lines = [line.strip() for line in cleaned.split('\n') if line.strip()]
-
-        return {
-            "brief_summary": lines[0] if lines else content[:100],
-            "detailed_summary": ' '.join(lines[:3]) if lines else content[:200],
-            "filename_quality": None,
-            "suggested_filename": None,
-        }
-
 
 def summarize_file(
     file_obj: FileObject,

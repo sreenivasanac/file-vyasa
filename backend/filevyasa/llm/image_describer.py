@@ -7,7 +7,7 @@ from pathlib import Path
 
 import structlog
 
-from filevyasa.models.enums import FilenameQuality
+from filevyasa.llm.response_parser import parse_llm_response
 from filevyasa.models.file_object import FileObject
 
 logger = structlog.get_logger()
@@ -138,12 +138,12 @@ class ImageDescriber:
             response = litellm.completion(**kwargs)
 
             content = response.choices[0].message.content
-            result = self._parse_response(content, file_obj.extension)
+            result = parse_llm_response(content, file_obj.extension)
 
-            file_obj.ai_brief_summary = result.get("brief_summary", "")
-            file_obj.ai_summary = result.get("detailed_summary", "")
-            file_obj.filename_quality = result.get("filename_quality")
-            file_obj.suggested_filename = result.get("suggested_filename")
+            file_obj.ai_brief_summary = result.brief_summary
+            file_obj.ai_summary = result.detailed_summary
+            file_obj.filename_quality = result.filename_quality
+            file_obj.suggested_filename = result.suggested_filename
             file_obj.llm_model = self.LLAVA_MODEL
             file_obj.summarized_at = datetime.now()
 
@@ -160,90 +160,3 @@ class ImageDescriber:
             file_obj.ai_summary = ""
 
         return file_obj
-
-    def _parse_response(self, content: str, file_extension: str) -> dict:
-        """Parse JSON response from LLM."""
-        import json
-        import re
-
-        valid_qualities = {"good", "acceptable", "poor", "meaningless"}
-
-        def normalize_keys(data: dict, ext: str) -> dict:
-            """Normalize keys and validate values."""
-            result = {
-                "brief_summary": "",
-                "detailed_summary": "",
-                "filename_quality": None,
-                "suggested_filename": None,
-            }
-            if "brief_summary" in data:
-                result["brief_summary"] = data["brief_summary"]
-            if "detailed_summary" in data:
-                result["detailed_summary"] = data["detailed_summary"]
-            elif "detailed_description" in data:
-                result["detailed_summary"] = data["detailed_description"]
-
-            # Handle filename quality
-            quality = data.get("filename_quality", "").lower().strip()
-            if quality in valid_qualities:
-                result["filename_quality"] = FilenameQuality(quality)
-
-            # Handle suggested filename - ensure it has the right extension
-            suggested = data.get("suggested_filename")
-            if suggested and isinstance(suggested, str):
-                suggested = suggested.strip()
-                # Ensure suggested filename has the correct extension
-                if ext and not suggested.lower().endswith(f".{ext.lower()}"):
-                    base = suggested.rsplit('.', 1)[0] if '.' in suggested else suggested
-                    suggested = f"{base}.{ext}"
-                result["suggested_filename"] = suggested
-
-            return result
-
-        try:
-            parsed = json.loads(content)
-            return normalize_keys(parsed, file_extension)
-        except json.JSONDecodeError:
-            pass
-
-        json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', content, re.DOTALL)
-        if json_match:
-            try:
-                parsed = json.loads(json_match.group(1))
-                return normalize_keys(parsed, file_extension)
-            except json.JSONDecodeError:
-                pass
-
-        json_match = re.search(r'\{[^{}]*"brief_summary"[^{}]*\}', content, re.DOTALL)
-        if json_match:
-            try:
-                parsed = json.loads(json_match.group(0))
-                return normalize_keys(parsed, file_extension)
-            except json.JSONDecodeError:
-                pass
-
-        brief_match = re.search(r'"brief_summary"\s*:\s*"([^"]*)"', content)
-        detailed_match = re.search(r'"detailed_(?:summary|description)"\s*:\s*"([^"]*)"', content)
-        quality_match = re.search(r'"filename_quality"\s*:\s*"([^"]*)"', content)
-        suggested_match = re.search(r'"suggested_filename"\s*:\s*"([^"]*)"', content)
-
-        if brief_match or detailed_match:
-            quality_val = quality_match.group(1).lower() if quality_match else None
-            return {
-                "brief_summary": brief_match.group(1) if brief_match else "",
-                "detailed_summary": detailed_match.group(1) if detailed_match else "",
-                "filename_quality": (
-                    FilenameQuality(quality_val) if quality_val in valid_qualities else None
-                ),
-                "suggested_filename": suggested_match.group(1) if suggested_match else None,
-            }
-
-        cleaned = re.sub(r'[{}":]', '', content).strip()
-        lines = [line.strip() for line in cleaned.split('\n') if line.strip()]
-
-        return {
-            "brief_summary": lines[0] if lines else content[:100],
-            "detailed_summary": ' '.join(lines[:3]) if lines else content[:200],
-            "filename_quality": None,
-            "suggested_filename": None,
-        }

@@ -12,8 +12,14 @@ import { FolderInfoCard } from './FolderInfoCard';
 import type { MonitoredFolder } from '@/types';
 
 export function FolderList() {
-  const { setCurrentFolder, setCurrentView, setFolders, setIsSyncing, setSyncProgress } =
-    useAppStore();
+  const {
+    setCurrentFolder,
+    setCurrentView,
+    setFolders,
+    setIsSyncing,
+    setSyncProgress,
+    updateFolder,
+  } = useAppStore();
   const queryClient = useQueryClient();
 
   const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
@@ -52,6 +58,13 @@ export function FolderList() {
         processed: folder.processed_files,
         failed: folder.failed_files,
       });
+    } else if (folder.status === 'cancelled') {
+      setIsSyncing(false);
+      setSyncProgress({
+        total: folder.total_files,
+        processed: folder.processed_files,
+        failed: folder.failed_files,
+      });
     }
     setCurrentView('files');
   };
@@ -61,10 +74,18 @@ export function FolderList() {
     setActiveFolderId(folderId);
     setIsSyncingFolder(true);
     try {
-      await api.folders.sync(folderId);
+      const folder = await api.folders.sync(folderId);
+      updateFolder(folder);
+      setIsSyncing(folder.status === 'syncing');
+      setSyncProgress({
+        total: folder.total_files,
+        processed: folder.processed_files,
+        failed: folder.failed_files,
+      });
       queryClient.invalidateQueries({ queryKey: ['folders'] });
     } catch (err) {
       console.error('Failed to sync folder:', err);
+      setIsSyncing(false);
     } finally {
       setIsSyncingFolder(false);
     }

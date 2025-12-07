@@ -57,6 +57,9 @@ class MonitoredFolder(MonitoredFolderBase):
     status: FolderStatus = Field(
         default=FolderStatus.IDLE, description="Current sync status"
     )
+    last_sync_started_at: Optional[datetime] = Field(
+        default=None, description="When the current/last sync was started"
+    )
     last_synced_at: Optional[datetime] = Field(
         default=None, description="When folder was last synced"
     )
@@ -85,6 +88,7 @@ class MonitoredFolderResponse(BaseModel):
     status: FolderStatus
     last_synced_at: Optional[datetime]
     last_llm_model: Optional[str]
+    last_sync_started_at: Optional[datetime]
 
     total_files: int
     processed_files: int

@@ -4,6 +4,7 @@ import { api } from '@/api/client';
 import { useAppStore } from '@/stores/appStore';
 import { useFolderActions } from '@/hooks/useFolderActions';
 import { useSyncPolling } from '@/hooks/useSyncPolling';
+import { openPath } from '@tauri-apps/plugin-opener';
 import { FileFilters } from './FileFilters';
 import { FolderTree } from './FolderTree';
 import { FolderInfoCard } from '@/components/folders/FolderInfoCard';
@@ -22,6 +23,9 @@ export function FileList() {
     folders,
     setCurrentFolder,
     setCurrentView,
+    setIsSyncing,
+    setSyncProgress,
+    updateFolder,
   } = useAppStore();
 
   const [category, setCategory] = useState<FileCategory | undefined>();
@@ -43,7 +47,7 @@ export function FileList() {
     });
 
   // Use sync polling to get currently processing files
-  const { processingFiles } = useSyncPolling(currentFolderId, isSyncing);
+  const { processingFiles } = useSyncPolling(currentFolderId, isSyncing, currentFolder?.status);
   const processingFilePaths = processingFiles.map((f) => f.path);
 
   const { data, isLoading, refetch } = useQuery({
@@ -59,6 +63,27 @@ export function FileList() {
     enabled: !!currentFolderId,
     refetchInterval: isSyncing ? 2000 : false,
   });
+
+  // Seed sync state when a folder is selected
+  useEffect(() => {
+    if (!currentFolder) return;
+
+    if (currentFolder.status === 'syncing') {
+      setIsSyncing(true);
+      setSyncProgress({
+        total: currentFolder.total_files,
+        processed: currentFolder.processed_files,
+        failed: currentFolder.failed_files,
+      });
+    } else if (currentFolder.status === 'cancelled') {
+      setIsSyncing(false);
+      setSyncProgress({
+        total: currentFolder.total_files,
+        processed: currentFolder.processed_files,
+        failed: currentFolder.failed_files,
+      });
+    }
+  }, [currentFolder, setIsSyncing, setSyncProgress]);
 
   // Refetch files when sync completes
   useEffect(() => {
@@ -80,6 +105,14 @@ export function FileList() {
     setIsCancelling(true);
     try {
       await api.folders.cancel(currentFolderId);
+      const updated = await api.folders.get(currentFolderId);
+      updateFolder(updated);
+      setSyncProgress({
+        total: updated.total_files,
+        processed: updated.processed_files,
+        failed: updated.failed_files,
+      });
+      setIsSyncing(false);
     } catch (err) {
       console.error('Failed to cancel sync:', err);
       setIsCancelling(false);
@@ -108,6 +141,7 @@ export function FileList() {
           onSync={syncFolder}
           onDelete={() => setShowDeleteConfirm(true)}
           onCancel={handleCancel}
+          onOpenInFinder={() => currentFolder.root_path && openPath(currentFolder.root_path)}
           isSyncingAction={isSyncingAction}
           isDeleting={isDeleting}
           isCancelling={isCancelling}

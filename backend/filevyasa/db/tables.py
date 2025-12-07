@@ -27,6 +27,7 @@ class MonitoredFolderTable(Base):
 
     # Sync state (idle, syncing, cancelled, error)
     status: Mapped[str] = mapped_column(String(20), default="idle")
+    last_sync_started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     last_synced_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     last_llm_model: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
 
@@ -102,6 +103,10 @@ class FileObjectTable(Base):
     extraction_status: Mapped[str] = mapped_column(String(20), default="pending")
     extraction_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     is_password_protected: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Processing timestamps
+    last_extracted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    last_ai_processed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # Timestamps
     scanned_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)

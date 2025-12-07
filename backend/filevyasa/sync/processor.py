@@ -110,10 +110,10 @@ class ProcessingTracker:
 class SyncProgress:
     """Thread-safe progress tracking for parallel sync."""
 
-    def __init__(self):
+    def __init__(self, processed: int = 0, failed: int = 0):
         self._lock = threading.Lock()
-        self.processed = 0
-        self.failed = 0
+        self.processed = processed
+        self.failed = failed
         self.new_count = 0
         self.modified_count = 0
         self.unchanged_count = 0

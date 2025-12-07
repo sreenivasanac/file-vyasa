@@ -16,8 +16,6 @@ interface FolderInfoCardProps {
   isCancelling?: boolean;
   /** Sync progress data for ETA calculation (only when syncing) */
   syncProgress?: SyncProgressData;
-  /** Show folder icon and path (used in FolderList cards) */
-  showFolderDetails?: boolean;
   /** Wrap content in a styled container with border/background */
   asHeader?: boolean;
 }
@@ -36,7 +34,6 @@ export function FolderInfoCard({
   isDeleting = false,
   isCancelling = false,
   syncProgress,
-  showFolderDetails = false,
   asHeader = false,
 }: FolderInfoCardProps) {
   const isSyncing = folder.status === 'syncing';
@@ -53,9 +50,7 @@ export function FolderInfoCard({
       {/* Row 1: folder icon, name, external link, status badge */}
       <div className="flex items-start justify-between">
         <div className="flex min-w-0 flex-1 items-start gap-3">
-          {showFolderDetails && (
-            <Folder className="mt-0.5 h-5 w-5 flex-shrink-0 text-accent" />
-          )}
+          <Folder className="mt-0.5 h-5 w-5 flex-shrink-0 text-accent" />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <p className="font-medium text-text-primary">{folder.name}</p>
@@ -72,14 +67,12 @@ export function FolderInfoCard({
                 </button>
               )}
             </div>
-            {showFolderDetails && (
-              <p
-                className="mt-0.5 truncate text-xs text-text-muted"
-                title={folder.root_path}
-              >
-                {truncatePath(folder.root_path, 60)}
-              </p>
-            )}
+            <p
+              className="mt-0.5 truncate text-xs text-text-muted"
+              title={folder.root_path}
+            >
+              {truncatePath(folder.root_path, 60)}
+            </p>
           </div>
         </div>
         <div className="ml-4 flex items-center gap-2">

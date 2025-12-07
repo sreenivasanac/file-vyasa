@@ -82,6 +82,16 @@ class SyncService:
                 self.progress.increment('new_count')
             else:
                 self.progress.increment('modified_count')
+
+            now = datetime.now()
+            file_obj.last_extracted_at = now
+            if (
+                self.generate_document_summaries
+                or self.generate_image_descriptions
+                or self.extract_media_transcriptions
+            ):
+                file_obj.last_ai_processed_at = now
+            file_obj.extraction_status = 'success'
             update_file_record(db_file, file_obj)
             self.progress.increment('processed')
             batch_pending.append(file_obj)
@@ -103,7 +113,7 @@ class SyncService:
             folder_id=self.folder_id
         )
 
-        if batch_pending and folder.status != FolderStatus.CANCELLED.value:
+        if batch_pending:
             session.commit()
             folder.processed_files = self.progress.processed
             folder.failed_files = self.progress.failed
@@ -146,7 +156,11 @@ class SyncService:
                 return
 
             folder.status = FolderStatus.SYNCING.value
+            folder.last_sync_started_at = datetime.now()
             session.commit()
+
+            # Track per-run progress starting from zero; folder fields are updated from this
+            self.progress = SyncProgress()
 
             processor = self._create_processor()
 
@@ -165,7 +179,7 @@ class SyncService:
 
             # Categorize files and create pending records for new files
             files_to_process, _ = self._categorize_files(
-                session, fs_files, existing_by_inode, existing_by_path
+                session, fs_files, existing_by_inode, existing_by_path, folder
             )
 
             session.commit()
@@ -200,11 +214,16 @@ class SyncService:
         fs_files: List[FileObject],
         existing_by_inode: dict,
         existing_by_path: dict,
+        folder,
     ) -> Tuple[List[Tuple[FileObject, Optional[any], str]], dict]:
-        """Categorize files into new, modified, or unchanged.
+        """Categorize files into work queues based on timestamps and pending state.
 
-        For new files, creates pending DB records immediately so they appear in UI.
-        Returns (files_to_process, new_db_files_by_path).
+        Rules:
+        - Always process new files.
+        - Process pending files left from prior run.
+        - Re-process if file changed since last extraction.
+        - Re-run AI if enabled and stale vs. last AI run or current sync start.
+        - Otherwise mark unchanged and count it as processed for this run.
         """
         files_to_process = []
         new_db_files = {}  # path -> db_file for newly created pending records
@@ -214,22 +233,51 @@ class SyncService:
 
             if db_file is None:
                 # Create pending record immediately so file appears in UI
-                pending_record = create_file_record(file_obj, self.folder_id)
+                # pending_record = create_file_record(file_obj, self.folder_id)
                 pending_record.extraction_status = 'pending'
                 session.add(pending_record)
                 new_db_files[file_obj.path] = pending_record
                 files_to_process.append((file_obj, pending_record, 'new'))
-            elif (
+                continue
+
+            # Track moves
+            if db_file.path != file_obj.path:
+                db_file.path = file_obj.path
+                db_file.filename = file_obj.filename
+
+            is_pending = db_file.extraction_status == 'pending'
+            modified_since_db = (
                 file_obj.modified_at
                 and db_file.modified_at
                 and file_obj.modified_at > db_file.modified_at
-            ):
-                files_to_process.append((file_obj, db_file, 'modified'))
+            )
+
+            needs_extraction = is_pending or db_file.extraction_status != 'success'
+            last_extracted_at = getattr(db_file, 'last_extracted_at', None)
+            if last_extracted_at is None:
+                needs_extraction = True
+            elif file_obj.modified_at and file_obj.modified_at > last_extracted_at:
+                needs_extraction = True
+            elif modified_since_db:
+                needs_extraction = True
+
+            ai_enabled = (
+                self.generate_document_summaries
+                or self.generate_image_descriptions
+                or self.extract_media_transcriptions
+            )
+            last_ai_processed_at = getattr(db_file, 'last_ai_processed_at', None)
+            needs_ai = False
+            if ai_enabled:
+                if last_ai_processed_at is None:
+                    needs_ai = True
+                elif file_obj.modified_at and file_obj.modified_at > last_ai_processed_at:
+                    needs_ai = True
+
+            if is_pending or needs_extraction or needs_ai:
+                action = 'pending' if is_pending else 'modified'
+                files_to_process.append((file_obj, db_file, action))
             else:
-                # Unchanged - just update path if moved
-                if db_file.path != file_obj.path:
-                    db_file.path = file_obj.path
-                    db_file.filename = file_obj.filename
                 self.progress.increment('unchanged_count')
                 self.progress.increment('processed')
 

@@ -81,6 +81,7 @@ def _folder_to_response(folder: MonitoredFolderTable) -> MonitoredFolderResponse
         status=FolderStatus(folder.status),
         last_synced_at=folder.last_synced_at,
         last_llm_model=folder.last_llm_model,
+        last_sync_started_at=getattr(folder, 'last_sync_started_at', None),
         total_files=folder.total_files,
         processed_files=folder.processed_files,
         failed_files=folder.failed_files,
@@ -265,10 +266,11 @@ async def sync_folder(
             if request.extract_media_transcriptions is not None:
                 extract_media_transcriptions = request.extract_media_transcriptions
 
-        # Reset progress counters
+        # Each sync invocation is treated as a fresh run for progress counters
         folder.processed_files = 0
         folder.failed_files = 0
         folder.status = FolderStatus.SYNCING.value
+        folder.last_sync_started_at = datetime.now()
         session.commit()
 
         result = _folder_to_response(folder)

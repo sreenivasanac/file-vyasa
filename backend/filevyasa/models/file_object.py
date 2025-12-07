@@ -57,6 +57,14 @@ class FileObjectBase(BaseModel):
         default=False, description="Whether file is password protected"
     )
 
+    # Processing timestamps
+    last_extracted_at: Optional[datetime] = Field(
+        default=None, description="When file content extraction last ran"
+    )
+    last_ai_processed_at: Optional[datetime] = Field(
+        default=None, description="When AI processing last ran"
+    )
+
     # AI-suggested filename improvements
     suggested_filename: Optional[str] = Field(
         default=None, description="AI-suggested filename if current name is poor/meaningless"
@@ -135,6 +143,9 @@ class FileObjectResponse(BaseModel):
     extraction_status: ExtractionStatus
     extraction_error: Optional[str]
     is_password_protected: bool
+
+    last_extracted_at: Optional[datetime]
+    last_ai_processed_at: Optional[datetime]
 
     # AI-suggested filename improvements
     suggested_filename: Optional[str]

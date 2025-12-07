@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/client';
 import { useAppStore } from '@/stores/appStore';
+import type { FolderStatus } from '@/types';
 
 interface ProcessingFile {
   path: string;
@@ -12,9 +13,13 @@ interface ProcessingFile {
  * Hook for polling folder sync status and currently processing files.
  * Manages sync progress updates and detects completion.
  */
-export function useSyncPolling(folderId: string | null, isSyncing: boolean) {
+export function useSyncPolling(
+  folderId: string | null,
+  isSyncing: boolean,
+  folderStatus?: FolderStatus
+) {
   const queryClient = useQueryClient();
-  const { setSyncProgress, setIsSyncing, clearSyncTiming } = useAppStore();
+  const { setSyncProgress, setIsSyncing, clearSyncTiming, updateFolder } = useAppStore();
   const [processingFiles, setProcessingFiles] = useState<ProcessingFile[]>([]);
   const clearSyncTimingRef = useRef(clearSyncTiming);
 
@@ -23,7 +28,8 @@ export function useSyncPolling(folderId: string | null, isSyncing: boolean) {
   }, [clearSyncTiming]);
 
   useEffect(() => {
-    if (!folderId || !isSyncing) {
+    const shouldPoll = !!folderId && (isSyncing || folderStatus === 'syncing');
+    if (!shouldPoll) {
       return;
     }
 
@@ -40,7 +46,10 @@ export function useSyncPolling(folderId: string | null, isSyncing: boolean) {
           failed: folder.failed_files,
         });
 
+        updateFolder(folder);
         setProcessingFiles(processingData.processing_files);
+
+        setIsSyncing(folder.status === 'syncing');
 
         // Detect sync completion
         if (
@@ -63,7 +72,7 @@ export function useSyncPolling(folderId: string | null, isSyncing: boolean) {
       clearInterval(pollInterval);
       setProcessingFiles([]);
     };
-  }, [folderId, isSyncing, setSyncProgress, setIsSyncing, queryClient]);
+  }, [folderId, isSyncing, folderStatus, setSyncProgress, setIsSyncing, queryClient, updateFolder]);
 
   return { processingFiles };
 }

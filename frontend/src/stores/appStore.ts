@@ -37,6 +37,7 @@ interface AppState {
   folders: MonitoredFolder[];
   setFolders: (folders: MonitoredFolder[]) => void;
   addFolder: (folder: MonitoredFolder) => void;
+  updateFolder: (folder: MonitoredFolder) => void;
 
   // Backend status
   backendConnected: boolean;
@@ -84,6 +85,10 @@ export const useAppStore = create<AppState>((set) => ({
   folders: [],
   setFolders: (folders) => set({ folders }),
   addFolder: (folder) => set((state) => ({ folders: [folder, ...state.folders] })),
+  updateFolder: (folder) =>
+    set((state) => ({
+      folders: state.folders.map((f) => (f.id === folder.id ? { ...f, ...folder } : f)),
+    })),
 
   // Backend status
   backendConnected: false,

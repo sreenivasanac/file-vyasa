@@ -3,7 +3,7 @@
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -39,6 +39,7 @@ def init_db() -> None:
 
     # Create all tables
     Base.metadata.create_all(_engine)
+    _ensure_new_columns(_engine)
 
 
 async def init_async_db() -> None:
@@ -52,6 +53,7 @@ async def init_async_db() -> None:
     # Create all tables
     async with _async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(_ensure_new_columns)
 
 
 def get_db():
@@ -64,6 +66,27 @@ def get_db():
 def get_session() -> Session:
     """Get a synchronous database session (alias for get_db)."""
     return get_db()
+
+
+def _ensure_new_columns(engine):
+    """Best-effort migration to add newly introduced columns for existing databases."""
+    inspector = inspect(engine)
+    expected = {
+        "monitored_folders": [
+            ("last_sync_started_at", "DATETIME"),
+        ],
+        "file_objects": [
+            ("last_extracted_at", "DATETIME"),
+            ("last_ai_processed_at", "DATETIME"),
+        ],
+    }
+
+    with engine.begin() as conn:
+        for table, cols in expected.items():
+            existing = {col['name'] for col in inspector.get_columns(table)}
+            for name, ddl_type in cols:
+                if name not in existing:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl_type}"))
 
 
 @asynccontextmanager

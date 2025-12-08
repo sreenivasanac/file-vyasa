@@ -36,13 +36,6 @@ export function FolderList() {
   const { data: folders, isLoading } = useQuery({
     queryKey: ['folders'],
     queryFn: () => api.folders.list(),
-    refetchInterval: (query) => {
-      const data = query.state.data;
-      if (data?.some((f) => f.status === 'syncing')) {
-        return 2000;
-      }
-      return false;
-    },
   });
 
   useEffect(() => {

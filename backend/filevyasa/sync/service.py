@@ -56,8 +56,8 @@ class SyncService:
             generate_document_summaries=self.generate_document_summaries,
         )
 
-    def _scan_filesystem(self, folder) -> List[FileObject]:
-        """Scan filesystem and return list of files."""
+    def _scan_filesystem(self, folder) -> tuple[List[FileObject], int]:
+        """Scan filesystem and return list of files with skipped count."""
         ignore_patterns = (
             list(folder.ignore_patterns or []) + list(settings.default_ignore_patterns)
         )
@@ -171,11 +171,12 @@ class SyncService:
             existing_by_path = {f.path: f for f in all_db_files}
 
             # Scan filesystem
-            fs_files = self._scan_filesystem(folder)
+            fs_files, skipped_count = self._scan_filesystem(folder)
             fs_inodes = {f.inode for f in fs_files if f.inode}
             fs_paths = {f.path for f in fs_files}
 
             folder.total_files = len(fs_files)
+            folder.skipped_files = skipped_count
             session.commit()
 
             # Categorize files and create pending records for new files

@@ -51,6 +51,7 @@ export interface MonitoredFolder {
   total_files: number;
   processed_files: number;
   failed_files: number;
+  skipped_files: number;
   // AI processing options
   generate_document_summaries: boolean;
   generate_image_descriptions: boolean;

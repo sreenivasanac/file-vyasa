@@ -35,6 +35,7 @@ class MonitoredFolderTable(Base):
     total_files: Mapped[int] = mapped_column(Integer, default=0)
     processed_files: Mapped[int] = mapped_column(Integer, default=0)
     failed_files: Mapped[int] = mapped_column(Integer, default=0)
+    skipped_files: Mapped[int] = mapped_column(Integer, default=0)
 
     # Settings per folder - AI processing options
     generate_document_summaries: Mapped[bool] = mapped_column(Boolean, default=True)

@@ -40,7 +40,7 @@ class TestScanner:
     def test_scan_directory(self, test_files):
         """Test scanning a directory."""
         scanner = Scanner()
-        files = scanner.scan_to_list(test_files)
+        files, skipped = scanner.scan_to_list(test_files)
 
         assert len(files) >= 2  # At least test.txt and readme.md
         filenames = [f.filename for f in files]
@@ -50,15 +50,16 @@ class TestScanner:
     def test_scan_with_ignore_patterns(self, test_files):
         """Test scanning with ignore patterns."""
         scanner = Scanner(ignore_patterns=["*.txt"])
-        files = scanner.scan_to_list(test_files)
+        files, skipped = scanner.scan_to_list(test_files)
 
         for f in files:
             assert f.extension != "txt"
+        assert skipped > 0  # Should have skipped .txt files
 
     def test_file_category_detection(self, test_files):
         """Test that file categories are detected correctly."""
         scanner = Scanner()
-        files = scanner.scan_to_list(test_files)
+        files, _ = scanner.scan_to_list(test_files)
 
         for f in files:
             if f.extension == "txt":
@@ -77,10 +78,10 @@ class TestScanner:
         scanner = Scanner()
 
         # Recursive scan
-        files_recursive = scanner.scan_to_list(test_files, recursive=True)
+        files_recursive, _ = scanner.scan_to_list(test_files, recursive=True)
 
         # Non-recursive scan
-        files_flat = scanner.scan_to_list(test_files, recursive=False)
+        files_flat, _ = scanner.scan_to_list(test_files, recursive=False)
 
         # Recursive should find nested.txt
         recursive_names = [f.filename for f in files_recursive]
@@ -88,3 +89,20 @@ class TestScanner:
 
         assert "nested.txt" in recursive_names
         assert "nested.txt" not in flat_names
+    
+    def test_skipped_count_for_system_files(self, test_files, tmp_path):
+        """Test that system files are counted as skipped."""
+        # Create a .DS_Store file
+        ds_store = tmp_path / ".DS_Store"
+        ds_store.write_text("fake DS_Store")
+        
+        # Create a regular file
+        regular = tmp_path / "regular.txt"
+        regular.write_text("regular content")
+        
+        scanner = Scanner()
+        files, skipped = scanner.scan_to_list(tmp_path)
+        
+        assert len(files) == 1
+        assert files[0].filename == "regular.txt"
+        assert skipped == 1  # .DS_Store should be skipped

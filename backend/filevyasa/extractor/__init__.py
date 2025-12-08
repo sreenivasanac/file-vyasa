@@ -1,5 +1,10 @@
 """Extractor module for content extraction from files."""
 
+import warnings
+
+# TODO: Remove when pdfplumber/python-doctr support pypdfium2 5.x (4.30.1 yanked, 5.x has breaking changes)
+warnings.filterwarnings("ignore", message=".*_tree_closed.*")
+
 from filevyasa.extractor.base import BaseExtractor, MarkItDownMixin
 from filevyasa.extractor.factory import enrich_file_object, extract_content, get_extractor
 from filevyasa.extractor.google_workspace_extractor import GoogleDocsExtractor

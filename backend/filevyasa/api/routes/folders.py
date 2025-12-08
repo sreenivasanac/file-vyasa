@@ -200,12 +200,32 @@ async def cancel_sync(folder_id: str):
     return {"folder_id": folder_id, "status": "cancelled"}
 
 
+@router.get("/{folder_id}/sync-status")
+async def get_sync_status(folder_id: str):
+    """Get folder sync status and currently processing files in one call.
+
+    Returns folder details along with the list of files being processed.
+    This enables efficient polling during sync with a single API call.
+    """
+    folder = db_get_folder(folder_id)
+    if not folder:
+        raise HTTPException(status_code=404, detail=f"Folder not found: {folder_id}")
+
+    processing_files = ProcessingTracker.get_processing_files(folder_id)
+    return {
+        "folder": folder,
+        "processing_files": processing_files,
+    }
+
+
 @router.get("/{folder_id}/processing")
 async def get_processing_files(folder_id: str):
     """Get the list of files currently being processed for a folder.
 
     Returns a list of files that are actively being processed during sync.
     This enables real-time UI updates showing which files are being worked on.
+
+    Note: Consider using /sync-status for combined folder + processing data.
     """
     if not db_folder_exists(folder_id):
         raise HTTPException(status_code=404, detail=f"Folder not found: {folder_id}")

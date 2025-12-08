@@ -80,6 +80,11 @@ export const api = {
       folder_id: string;
       processing_files: Array<{ path: string; filename: string }>;
     }> => request(`/folders/${folderId}/processing`),
+
+    getSyncStatus: (folderId: string): Promise<{
+      folder: MonitoredFolder;
+      processing_files: Array<{ path: string; filename: string }>;
+    }> => request(`/folders/${folderId}/sync-status`),
   },
 
   // File endpoints
@@ -100,7 +105,7 @@ export const api = {
       if (params.page) searchParams.set('page', params.page.toString());
       if (params.page_size)
         searchParams.set('page_size', params.page_size.toString());
-      return request(`/files?${searchParams}`);
+      return request(`/files/?${searchParams}`);
     },
 
     get: (fileId: string): Promise<FileObject> => request(`/files/${fileId}`),

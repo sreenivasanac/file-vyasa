@@ -61,14 +61,27 @@ google:
 
 scan:
   default_ignore_patterns:
-  - .git
-  - .svn
-  - __pycache__
-  - node_modules
-  - .DS_Store
-  - '*.pyc'
-  - .venv
-  - venv
+    # macOS system files
+    - .DS_Store
+    - .Spotlight-V100
+    - .Trashes
+    - .fseventsd
+    - .AppleDouble
+    - .LSOverride
+    # Windows system files
+    - Thumbs.db
+    - ehthumbs.db
+    - desktop.ini
+    # Linux system files
+    - .directory
+    # Development artifacts
+    - .git
+    - .svn
+    - __pycache__
+    - node_modules
+    - '*.pyc'
+    - .venv
+    - venv
 
 sync:
   # Number of parallel workers for content extraction

@@ -156,11 +156,24 @@ class Settings(BaseSettings):
     # Scan settings
     default_ignore_patterns: list[str] = Field(
         default=_yaml_config.get("scan", {}).get("default_ignore_patterns", [
+            # macOS system files
+            ".DS_Store",
+            ".Spotlight-V100",
+            ".Trashes",
+            ".fseventsd",
+            ".AppleDouble",
+            ".LSOverride",
+            # Windows system files
+            "Thumbs.db",
+            "ehthumbs.db",
+            "desktop.ini",
+            # Linux system files
+            ".directory",
+            # Development artifacts
             ".git",
             ".svn",
             "__pycache__",
             "node_modules",
-            ".DS_Store",
             "*.pyc",
             ".venv",
             "venv",

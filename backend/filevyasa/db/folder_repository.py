@@ -60,6 +60,7 @@ def _folder_to_response(folder: MonitoredFolderTable) -> MonitoredFolderResponse
         total_files=folder.total_files,
         processed_files=folder.processed_files,
         failed_files=folder.failed_files,
+        skipped_files=getattr(folder, "skipped_files", 0),
         generate_document_summaries=folder.generate_document_summaries,
         generate_image_descriptions=folder.generate_image_descriptions,
         extract_media_transcriptions=folder.extract_media_transcriptions,

@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FileVyasa — AI-Powered Local File Organizer</title>
+  <meta name="description" content="A desktop application that scans local directories, extracts content from files, and uses AI to understand your filesystem. Privacy-first, runs locally.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236366f1'%3E%3Cpath d='M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l4.59-4.58L18 11l-6 6z'/%3E%3C/svg%3E">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            dark: {
+              900: '#0a0a0b',
+              800: '#111827',
+              700: '#1f2937',
+              600: '#374151',
+            },
+            accent: {
+              500: '#6366f1',
+              600: '#4f46e5',
+              400: '#818cf8',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .gradient-text {
+      background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .gradient-border {
+      background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+      padding: 1px;
+    }
+    .glow {
+      box-shadow: 0 0 40px rgba(99, 102, 241, 0.3);
+    }
+    .card-hover {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .card-hover:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    }
+    .fade-in {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .fade-in.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .screenshot-shadow {
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
+    }
+  </style>
+</head>
+<body class="bg-dark-900 text-white antialiased">
+  <!-- Navigation -->
+  <nav class="fixed top-0 left-0 right-0 z-50 bg-dark-900/80 backdrop-blur-lg border-b border-white/5">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-accent-500 flex items-center justify-center">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+            </svg>
+          </div>
+          <span class="text-xl font-bold">FileVyasa</span>
+        </div>
+        <div class="hidden md:flex items-center gap-8">
+          <a href="#features" class="text-gray-400 hover:text-white transition">Features</a>
+          <a href="#agentic" class="text-gray-400 hover:text-white transition">Agentic</a>
+          <a href="#how-it-works" class="text-gray-400 hover:text-white transition">How it Works</a>
+          <a href="#file-types" class="text-gray-400 hover:text-white transition">File Types</a>
+          <a href="https://github.com/sreenivasanac/file-vyasa" target="_blank" class="text-gray-400 hover:text-white transition flex items-center gap-2">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+            GitHub
+          </a>
+        </div>
+        <a href="#download" class="hidden md:inline-flex items-center gap-2 px-4 py-2 bg-accent-500 hover:bg-accent-600 rounded-lg font-medium transition">
+          Download
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto">
+      <div class="text-center mb-16">
+        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent-500/10 border border-accent-500/20 text-accent-400 text-sm font-medium mb-8">
+          <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+          v1.1 — Now with Media Transcription
+        </div>
+        <h1 class="text-5xl sm:text-6xl lg:text-7xl font-extrabold mb-6 leading-tight">
+          Your AI-Powered<br><span class="gradient-text">File Librarian</span>
+        </h1>
+        <p class="text-xl text-gray-400 max-w-3xl mx-auto mb-10 leading-relaxed">
+          A desktop app that scans your folders, extracts content from 30+ file types, 
+          describes images, and transcribes media—all running locally on your machine.
+        </p>
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
+          <a href="#download" class="inline-flex items-center gap-3 px-8 py-4 bg-accent-500 hover:bg-accent-600 rounded-xl font-semibold text-lg transition glow">
+            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+            Download for Mac
+          </a>
+          <a href="https://github.com/sreenivasanac/file-vyasa" target="_blank" class="inline-flex items-center gap-3 px-8 py-4 bg-dark-700 hover:bg-dark-600 border border-white/10 rounded-xl font-semibold text-lg transition">
+            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+            View on GitHub
+          </a>
+        </div>
+        <div class="flex flex-wrap items-center justify-center gap-6 text-sm text-gray-500">
+          <span class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            30+ File Types
+          </span>
+          <span class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            100+ LLM Providers
+          </span>
+          <span class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            Runs Locally
+          </span>
+          <span class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            Open Source
+          </span>
+        </div>
+      </div>
+      
+      <!-- Hero Screenshot -->
+      <div class="relative max-w-5xl mx-auto">
+        <div class="absolute inset-0 bg-gradient-to-r from-accent-500/20 to-purple-500/20 rounded-2xl blur-3xl"></div>
+        <div class="relative rounded-2xl overflow-hidden screenshot-shadow border border-white/10">
+          <img src="assets/filevyasa_browse_page.png" alt="FileVyasa Browse Interface" class="w-full">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Before/After Section -->
+  <section class="py-20 px-4 sm:px-6 lg:px-8 bg-dark-800/50">
+    <div class="max-w-6xl mx-auto">
+      <div class="text-center mb-16 fade-in">
+        <h2 class="text-3xl sm:text-4xl font-bold mb-4">From Chaos to Clarity</h2>
+        <p class="text-gray-400 text-lg">Stop wasting hours searching through cluttered folders</p>
+      </div>
+      
+      <div class="grid md:grid-cols-2 gap-8 items-center fade-in">
+        <!-- Before -->
+        <div class="bg-dark-700/50 rounded-2xl p-6 border border-red-500/20">
+          <div class="text-red-400 font-semibold mb-4 flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            Before: Digital Chaos
+          </div>
+          <div class="space-y-2 text-sm font-mono">
+            <div class="flex items-center gap-2 text-gray-400">
+              <span class="w-3 h-3 rounded bg-red-500/50"></span>
+              IMG_20230515_140322.jpg
+            </div>
+            <div class="flex items-center gap-2 text-gray-400">
+              <span class="w-3 h-3 rounded bg-blue-500/50"></span>
+              document-final-v2.pdf
+            </div>
+            <div class="flex items-center gap-2 text-gray-400">
+              <span class="w-3 h-3 rounded bg-green-500/50"></span>
+              project.zip
+            </div>
+            <div class="flex items-center gap-2 text-gray-400">
+              <span class="w-3 h-3 rounded bg-purple-500/50"></span>
+              Screenshot 2024-12-15.png
+            </div>
+            <div class="flex items-center gap-2 text-gray-400">
+              <span class="w-3 h-3 rounded bg-yellow-500/50"></span>
+              meeting_notes_draft_FINAL.txt
+            </div>
+            <div class="flex items-center gap-2 text-gray-400">
+              <span class="w-3 h-3 rounded bg-orange-500/50"></span>
+              budget_2023_v3_updated.xlsx
+            </div>
+            <div class="text-gray-500 mt-2 pl-5">...and 847 more files</div>
+          </div>
+        </div>
+        
+        <!-- After -->
+        <div class="bg-dark-700/50 rounded-2xl p-6 border border-green-500/20">
+          <div class="text-green-400 font-semibold mb-4 flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            After: AI-Understood & Searchable
+          </div>
+          <div class="space-y-3 text-sm">
+            <div class="bg-dark-800/50 rounded-lg p-3">
+              <div class="flex items-center gap-2 text-white font-medium mb-1">
+                <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Q3 Budget Report.xlsx
+              </div>
+              <p class="text-gray-400 text-xs">Financial spreadsheet with quarterly projections...</p>
+            </div>
+            <div class="bg-dark-800/50 rounded-lg p-3">
+              <div class="flex items-center gap-2 text-white font-medium mb-1">
+                <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                Team Lunch Photo.jpg
+              </div>
+              <p class="text-gray-400 text-xs">Group photo at restaurant, 5 people visible...</p>
+            </div>
+            <div class="bg-dark-800/50 rounded-lg p-3">
+              <div class="flex items-center gap-2 text-white font-medium mb-1">
+                <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                Product Demo Recording.mp4
+              </div>
+              <p class="text-gray-400 text-xs">Transcribed: "Welcome to our product demo..."</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section id="features" class="py-20 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto">
+      <div class="text-center mb-16 fade-in">
+        <h2 class="text-3xl sm:text-4xl font-bold mb-4">Powerful Features for <span class="gradient-text">Every File</span></h2>
+        <p class="text-gray-400 text-lg max-w-2xl mx-auto">FileVyasa extracts meaningful information from your files so you can find anything instantly</p>
+      </div>
+      
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 fade-in">
+        <!-- Feature 1 -->
+        <div class="bg-dark-800 rounded-2xl p-6 border border-white/5 card-hover">
+          <div class="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          </div>
+          <h3 class="text-xl font-semibold mb-2">Smart Content Extraction</h3>
+          <p class="text-gray-400">Extracts text from PDFs (with OCR), Office documents, code files, and more. Understands what's inside your files.</p>
+        </div>
+        
+        <!-- Feature 2 -->
+        <div class="bg-dark-800 rounded-2xl p-6 border border-white/5 card-hover">
+          <div class="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          </div>
+          <h3 class="text-xl font-semibold mb-2">AI Image Description</h3>
+          <p class="text-gray-400">Uses local AI (Ollama LLaVA) to describe what's in your photos and images. Find images by their content.</p>
+        </div>
+        
+        <!-- Feature 3 -->
+        <div class="bg-dark-800 rounded-2xl p-6 border border-white/5 card-hover">
+          <div class="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+          </div>
+          <h3 class="text-xl font-semibold mb-2">Media Transcription</h3>
+          <p class="text-gray-400">Transcribes audio and video files locally using Whisper. Search through your podcasts, meetings, and recordings.</p>
+        </div>
+        
+        <!-- Feature 4 -->
+        <div class="bg-dark-800 rounded-2xl p-6 border border-white/5 card-hover">
+          <div class="w-12 h-12 rounded-xl bg-yellow-500/10 flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+          </div>
+          <h3 class="text-xl font-semibold mb-2">Privacy First</h3>
+          <p class="text-gray-400">Your files never leave your computer. Use local models with Ollama or bring your own API key for cloud LLMs.</p>
+        </div>
+        
+        <!-- Feature 5 -->
+        <div class="bg-dark-800 rounded-2xl p-6 border border-white/5 card-hover">
+          <div class="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          </div>
+          <h3 class="text-xl font-semibold mb-2">Lightning Fast</h3>
+          <p class="text-gray-400">Parallel processing with configurable workers. Scan and process thousands of files in minutes, not hours.</p>
+        </div>
+        
+        <!-- Feature 6 -->
+        <div class="bg-dark-800 rounded-2xl p-6 border border-white/5 card-hover">
+          <div class="w-12 h-12 rounded-xl bg-cyan-500/10 flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+          </div>
+          <h3 class="text-xl font-semibold mb-2">Native Desktop App</h3>
+          <p class="text-gray-400">Built with Tauri for a fast, native experience. Available for macOS with Windows and Linux support coming soon.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Agentic Organization Section -->
+  <section id="agentic" class="py-20 px-4 sm:px-6 lg:px-8 bg-dark-800/50">
+    <div class="max-w-7xl mx-auto">
+      <div class="text-center mb-16 fade-in">
+        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-sm font-medium mb-6">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          Coming Soon
+        </div>
+        <h2 class="text-3xl sm:text-4xl font-bold mb-4">Agentic File <span class="gradient-text">Organization</span></h2>
+        <p class="text-gray-400 text-lg max-w-3xl mx-auto">Let AI propose the perfect folder structure—you stay in control. Review, approve, or reject every action before anything moves.</p>
+      </div>
+      
+      <!-- Human in the Loop Highlight -->
+      <div class="max-w-4xl mx-auto mb-16 fade-in">
+        <div class="gradient-border rounded-2xl">
+          <div class="bg-dark-900 rounded-2xl p-8 text-center">
+            <div class="w-16 h-16 rounded-2xl bg-accent-500/10 border border-accent-500/20 flex items-center justify-center mx-auto mb-6">
+              <svg class="w-8 h-8 text-accent-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+            </div>
+            <h3 class="text-2xl font-bold mb-4">Human-in-the-Loop AI</h3>
+            <p class="text-gray-400 max-w-2xl mx-auto">FileVyasa will never move or rename files without your explicit approval. The AI proposes, you decide. Every action is reversible with built-in rollback.</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Agentic Features Grid -->
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 fade-in">
+        <!-- Smart Clustering -->
+        <div class="bg-dark-800 rounded-2xl p-6 border border-purple-500/10 card-hover">
+          <div class="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+          </div>
+          <h3 class="text-xl font-semibold mb-2">Smart Clustering</h3>
+          <p class="text-gray-400">AI groups related files together based on content, not just extensions. Similar documents, related projects, and thematic content automatically clustered.</p>
+        </div>
+        
+        <!-- Folder Planning Board -->
+        <div class="bg-dark-800 rounded-2xl p-6 border border-blue-500/10 card-hover">
+          <div class="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/></svg>
+          </div>
+          <h3 class="text-xl font-semibold mb-2">Folder Planning Board</h3>
+          <p class="text-gray-400">Visual preview of proposed folder structure before any changes. See exactly where each file will go, edit folder names, and adjust the plan.</p>
+        </div>
+        
+        <!-- Accept/Reject Workflow -->
+        <div class="bg-dark-800 rounded-2xl p-6 border border-green-500/10 card-hover">
+          <div class="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <h3 class="text-xl font-semibold mb-2">Per-File Approval</h3>
+          <p class="text-gray-400">Accept or reject each proposed move individually. Confidence indicators (green/yellow/red) help you quickly review AI suggestions.</p>
+        </div>
+        
+        <!-- Safe Execution -->
+        <div class="bg-dark-800 rounded-2xl p-6 border border-yellow-500/10 card-hover">
+          <div class="w-12 h-12 rounded-xl bg-yellow-500/10 flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          </div>
+          <h3 class="text-xl font-semibold mb-2">Rollback Anytime</h3>
+          <p class="text-gray-400">Every move and rename is logged with rollback metadata. Changed your mind? Undo any action—even days later. Your files are always safe.</p>
+        </div>
+        
+        <!-- Duplicate Detection -->
+        <div class="bg-dark-800 rounded-2xl p-6 border border-orange-500/10 card-hover">
+          <div class="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          </div>
+          <h3 class="text-xl font-semibold mb-2">Duplicate Detection</h3>
+          <p class="text-gray-400">Hash-based detection finds true duplicates across your folders—even when filenames differ. Reclaim storage without risking important files.</p>
+        </div>
+        
+        <!-- Learns Preferences -->
+        <div class="bg-dark-800 rounded-2xl p-6 border border-cyan-500/10 card-hover">
+          <div class="w-12 h-12 rounded-xl bg-cyan-500/10 flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+          </div>
+          <h3 class="text-xl font-semibold mb-2">Learns Your Style</h3>
+          <p class="text-gray-400">FileVyasa remembers your folder preferences, naming conventions, and past decisions. Future suggestions get smarter over time.</p>
+        </div>
+      </div>
+      
+      <!-- Workflow Preview -->
+      <div class="mt-16 fade-in">
+        <div class="bg-dark-800/50 rounded-2xl p-8 border border-white/5">
+          <h3 class="text-xl font-semibold mb-6 text-center">How Agentic Organization Works</h3>
+          <div class="grid md:grid-cols-4 gap-4">
+            <div class="text-center">
+              <div class="w-12 h-12 rounded-full bg-accent-500/20 flex items-center justify-center mx-auto mb-3 text-accent-400 font-bold">1</div>
+              <h4 class="font-medium mb-1">Analyze</h4>
+              <p class="text-sm text-gray-500">AI scans and understands your files</p>
+            </div>
+            <div class="text-center">
+              <div class="w-12 h-12 rounded-full bg-accent-500/20 flex items-center justify-center mx-auto mb-3 text-accent-400 font-bold">2</div>
+              <h4 class="font-medium mb-1">Propose</h4>
+              <p class="text-sm text-gray-500">Suggests folder structure & actions</p>
+            </div>
+            <div class="text-center">
+              <div class="w-12 h-12 rounded-full bg-accent-500/20 flex items-center justify-center mx-auto mb-3 text-accent-400 font-bold">3</div>
+              <h4 class="font-medium mb-1">Review</h4>
+              <p class="text-sm text-gray-500">You approve, reject, or modify</p>
+            </div>
+            <div class="text-center">
+              <div class="w-12 h-12 rounded-full bg-accent-500/20 flex items-center justify-center mx-auto mb-3 text-accent-400 font-bold">4</div>
+              <h4 class="font-medium mb-1">Execute</h4>
+              <p class="text-sm text-gray-500">Safe moves with full rollback</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works Section -->
+  <section id="how-it-works" class="py-20 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto">
+      <div class="text-center mb-16 fade-in">
+        <h2 class="text-3xl sm:text-4xl font-bold mb-4">How It Works</h2>
+        <p class="text-gray-400 text-lg">Three simple steps to understand your files</p>
+      </div>
+      
+      <div class="grid md:grid-cols-3 gap-8 mb-16 fade-in">
+        <!-- Step 1 -->
+        <div class="text-center">
+          <div class="w-16 h-16 rounded-2xl bg-accent-500/10 border border-accent-500/20 flex items-center justify-center mx-auto mb-6">
+            <span class="text-2xl font-bold text-accent-400">1</span>
+          </div>
+          <h3 class="text-xl font-semibold mb-3">Add a Folder</h3>
+          <p class="text-gray-400">Select any folder to monitor—Downloads, Documents, Desktop, or any custom folder. Configure AI processing options.</p>
+        </div>
+        
+        <!-- Step 2 -->
+        <div class="text-center">
+          <div class="w-16 h-16 rounded-2xl bg-accent-500/10 border border-accent-500/20 flex items-center justify-center mx-auto mb-6">
+            <span class="text-2xl font-bold text-accent-400">2</span>
+          </div>
+          <h3 class="text-xl font-semibold mb-3">AI Analyzes Files</h3>
+          <p class="text-gray-400">FileVyasa scans your folder, extracts content from every supported file, and processes them with AI to understand what's inside.</p>
+        </div>
+        
+        <!-- Step 3 -->
+        <div class="text-center">
+          <div class="w-16 h-16 rounded-2xl bg-accent-500/10 border border-accent-500/20 flex items-center justify-center mx-auto mb-6">
+            <span class="text-2xl font-bold text-accent-400">3</span>
+          </div>
+          <h3 class="text-xl font-semibold mb-3">Browse & Search</h3>
+          <p class="text-gray-400">Navigate your files with AI-powered search. Filter by category, view extracted content, and find files by what's inside them.</p>
+        </div>
+      </div>
+      
+      <!-- Add Folder Screenshot -->
+      <div class="relative max-w-4xl mx-auto fade-in">
+        <div class="absolute inset-0 bg-gradient-to-r from-accent-500/10 to-purple-500/10 rounded-2xl blur-3xl"></div>
+        <div class="relative rounded-2xl overflow-hidden screenshot-shadow border border-white/10">
+          <img src="assets/filevyasa_add_folder_page.png" alt="FileVyasa Add Folder Interface" class="w-full">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- File Types Section -->
+  <section id="file-types" class="py-20 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-6xl mx-auto">
+      <div class="text-center mb-16 fade-in">
+        <h2 class="text-3xl sm:text-4xl font-bold mb-4">Supports <span class="gradient-text">30+ File Types</span></h2>
+        <p class="text-gray-400 text-lg">From documents to media, FileVyasa understands them all</p>
+      </div>
+      
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 fade-in">
+        <!-- Documents -->
+        <div class="bg-dark-800 rounded-xl p-5 border border-white/5">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+              <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            </div>
+            <h3 class="font-semibold">Documents</h3>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">PDF</span>
+            <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">DOCX</span>
+            <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">XLSX</span>
+            <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">PPTX</span>
+            <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">TXT</span>
+            <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">MD</span>
+            <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">RTF</span>
+          </div>
+        </div>
+        
+        <!-- Images -->
+        <div class="bg-dark-800 rounded-xl p-5 border border-white/5">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+              <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            </div>
+            <h3 class="font-semibold">Images</h3>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">JPG</span>
+            <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">PNG</span>
+            <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">GIF</span>
+            <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">WEBP</span>
+            <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">HEIC</span>
+            <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">BMP</span>
+            <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">TIFF</span>
+          </div>
+        </div>
+        
+        <!-- Media -->
+        <div class="bg-dark-800 rounded-xl p-5 border border-white/5">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+              <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            </div>
+            <h3 class="font-semibold">Media</h3>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">MP3</span>
+            <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">MP4</span>
+            <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">WAV</span>
+            <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">MOV</span>
+            <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">MKV</span>
+            <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">FLAC</span>
+            <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">M4A</span>
+          </div>
+        </div>
+        
+        <!-- Code & Others -->
+        <div class="bg-dark-800 rounded-xl p-5 border border-white/5">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
+              <svg class="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+            </div>
+            <h3 class="font-semibold">Code & More</h3>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">PY</span>
+            <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">JS</span>
+            <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">TS</span>
+            <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">HTML</span>
+            <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">JSON</span>
+            <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">IPYNB</span>
+            <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">ZIP</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LLM Providers Section -->
+  <section class="py-20 px-4 sm:px-6 lg:px-8 bg-dark-800/50">
+    <div class="max-w-5xl mx-auto">
+      <div class="text-center mb-12 fade-in">
+        <h2 class="text-3xl sm:text-4xl font-bold mb-4">Your AI, Your Choice</h2>
+        <p class="text-gray-400 text-lg max-w-2xl mx-auto">Use completely local models for privacy or connect to 100+ cloud AI providers with your own API key</p>
+      </div>
+      
+      <div class="grid md:grid-cols-2 gap-6 fade-in">
+        <!-- Local -->
+        <div class="bg-dark-700/50 rounded-2xl p-6 border border-green-500/20">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
+              <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-green-400">100% Local & Private</h3>
+              <p class="text-sm text-gray-400">No API key required</p>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <div class="flex items-center gap-2 text-gray-300">
+              <span class="w-2 h-2 rounded-full bg-green-500"></span>
+              Ollama (Llama 3.2, LLaVA, etc.)
+            </div>
+            <div class="flex items-center gap-2 text-gray-300">
+              <span class="w-2 h-2 rounded-full bg-green-500"></span>
+              Whisper (local transcription)
+            </div>
+            <div class="flex items-center gap-2 text-gray-300">
+              <span class="w-2 h-2 rounded-full bg-green-500"></span>
+              Your files never leave your machine
+            </div>
+          </div>
+        </div>
+        
+        <!-- Cloud -->
+        <div class="bg-dark-700/50 rounded-2xl p-6 border border-accent-500/20">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-xl bg-accent-500/10 flex items-center justify-center">
+              <svg class="w-5 h-5 text-accent-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/></svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-accent-400">Cloud Providers (BYOK)</h3>
+              <p class="text-sm text-gray-400">Bring your own API key</p>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <span class="px-3 py-1.5 bg-dark-800 rounded-lg text-sm text-gray-300">OpenAI</span>
+            <span class="px-3 py-1.5 bg-dark-800 rounded-lg text-sm text-gray-300">Anthropic</span>
+            <span class="px-3 py-1.5 bg-dark-800 rounded-lg text-sm text-gray-300">Google Gemini</span>
+            <span class="px-3 py-1.5 bg-dark-800 rounded-lg text-sm text-gray-300">Groq</span>
+            <span class="px-3 py-1.5 bg-dark-800 rounded-lg text-sm text-gray-300">DeepSeek</span>
+            <span class="px-3 py-1.5 bg-dark-800 rounded-lg text-sm text-gray-300">Together AI</span>
+            <span class="px-3 py-1.5 bg-dark-800 rounded-lg text-sm text-gray-400">+100 more via LiteLLM</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Roadmap Section -->
+  <section class="py-20 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-5xl mx-auto">
+      <div class="text-center mb-12 fade-in">
+        <h2 class="text-3xl sm:text-4xl font-bold mb-4">Development <span class="gradient-text">Roadmap</span></h2>
+        <p class="text-gray-400 text-lg">From understanding your files to intelligent organization</p>
+      </div>
+      
+      <div class="space-y-4 fade-in">
+        <!-- Current -->
+        <div class="bg-dark-800 rounded-xl p-6 border border-green-500/30">
+          <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-lg bg-green-500/20 flex items-center justify-center flex-shrink-0">
+              <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-2">
+                <h3 class="font-semibold text-green-400 text-lg">v1.1 — File Understanding</h3>
+                <span class="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full">Released</span>
+              </div>
+              <p class="text-gray-400 text-sm mb-3">Scan, extract, and understand your files</p>
+              <div class="flex flex-wrap gap-2">
+                <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">30+ file types</span>
+                <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">Image descriptions</span>
+                <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">Media transcription</span>
+                <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">OCR for PDFs</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- v1.3 Clustering -->
+        <div class="bg-dark-800 rounded-xl p-6 border border-purple-500/30">
+          <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-lg bg-purple-500/20 flex items-center justify-center flex-shrink-0">
+              <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+            </div>
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-2">
+                <h3 class="font-semibold text-purple-400 text-lg">v1.3 — Smart Clustering</h3>
+                <span class="px-2 py-0.5 bg-purple-500/20 text-purple-400 text-xs rounded-full">Coming Soon</span>
+              </div>
+              <p class="text-gray-400 text-sm mb-3">AI groups related files and suggests folder structures</p>
+              <div class="flex flex-wrap gap-2">
+                <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">Content-based clustering</span>
+                <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">Folder planning board</span>
+                <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">Suggested folder names</span>
+                <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">Preview mode</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- v1.4 Planning -->
+        <div class="bg-dark-800 rounded-xl p-6 border border-blue-500/30">
+          <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+              <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+            </div>
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-2">
+                <h3 class="font-semibold text-blue-400 text-lg">v1.4 — Action Planning</h3>
+                <span class="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded-full">Planned</span>
+              </div>
+              <p class="text-gray-400 text-sm mb-3">Per-file move/rename proposals with approval workflow</p>
+              <div class="flex flex-wrap gap-2">
+                <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">Accept/reject per file</span>
+                <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">Confidence indicators</span>
+                <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">Edit destinations</span>
+                <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">Rename suggestions</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- v1.5 Execution -->
+        <div class="bg-dark-800 rounded-xl p-6 border border-yellow-500/30">
+          <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-lg bg-yellow-500/20 flex items-center justify-center flex-shrink-0">
+              <svg class="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            </div>
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-2">
+                <h3 class="font-semibold text-yellow-400 text-lg">v1.5 — Safe Execution</h3>
+                <span class="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full">Planned</span>
+              </div>
+              <p class="text-gray-400 text-sm mb-3">Execute approved actions with full rollback support</p>
+              <div class="flex flex-wrap gap-2">
+                <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">Safe file moves</span>
+                <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">Rollback anytime</span>
+                <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">Duplicate detection</span>
+                <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">Session logs</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- v2.x Future -->
+        <div class="bg-dark-800 rounded-xl p-6 border border-white/10">
+          <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
+              <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+            </div>
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-2">
+                <h3 class="font-semibold text-gray-300 text-lg">v2.x — Advanced Intelligence</h3>
+                <span class="px-2 py-0.5 bg-white/10 text-gray-400 text-xs rounded-full">Future</span>
+              </div>
+              <p class="text-gray-400 text-sm mb-3">Learns your preferences and adapts over time</p>
+              <div class="flex flex-wrap gap-2">
+                <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">Preference learning</span>
+                <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">Reusable templates</span>
+                <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">Visual cluster maps</span>
+                <span class="px-2 py-1 bg-dark-700 rounded text-xs text-gray-400">Multi-folder support</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Open Source Section -->
+  <section class="py-20 px-4 sm:px-6 lg:px-8 bg-dark-800/50">
+    <div class="max-w-4xl mx-auto text-center fade-in">
+      <div class="w-16 h-16 rounded-2xl bg-dark-700 border border-white/10 flex items-center justify-center mx-auto mb-6">
+        <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+      </div>
+      <h2 class="text-3xl sm:text-4xl font-bold mb-4">Open Source & Transparent</h2>
+      <p class="text-gray-400 text-lg mb-8 max-w-2xl mx-auto">FileVyasa is open source. Inspect the code, contribute features, or self-host on your own infrastructure.</p>
+      <div class="flex flex-wrap items-center justify-center gap-4 mb-8">
+        <span class="px-4 py-2 bg-dark-700 rounded-lg text-sm text-gray-300 flex items-center gap-2">
+          <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
+          Tauri 2.x
+        </span>
+        <span class="px-4 py-2 bg-dark-700 rounded-lg text-sm text-gray-300 flex items-center gap-2">
+          <svg class="w-4 h-4 text-blue-400" fill="currentColor" viewBox="0 0 24 24"><path d="M14.23 12.004a2.236 2.236 0 0 1-2.235 2.236 2.236 2.236 0 0 1-2.236-2.236 2.236 2.236 0 0 1 2.235-2.236 2.236 2.236 0 0 1 2.236 2.236zm2.648-10.69c-1.346 0-3.107.96-4.888 2.622-1.78-1.653-3.542-2.602-4.887-2.602-.41 0-.783.093-1.106.278-1.375.793-1.683 3.264-.973 6.365C1.98 8.917 0 10.42 0 12.004c0 1.59 1.99 3.097 5.043 4.03-.704 3.113-.39 5.588.988 6.38.32.187.69.275 1.102.275 1.345 0 3.107-.96 4.888-2.624 1.78 1.654 3.542 2.603 4.887 2.603.41 0 .783-.09 1.106-.275 1.374-.792 1.683-3.263.973-6.365C22.02 15.096 24 13.59 24 12.004c0-1.59-1.99-3.097-5.043-4.032.704-3.11.39-5.587-.988-6.38-.318-.184-.688-.277-1.092-.278zm-.005 1.09v.006c.225 0 .406.044.558.127.666.382.955 1.835.73 3.704-.054.46-.142.945-.25 1.44-.96-.236-2.006-.417-3.107-.534-.66-.905-1.345-1.727-2.035-2.447 1.592-1.48 3.087-2.292 4.105-2.295zm-9.77.02c1.012 0 2.514.808 4.11 2.28-.686.72-1.37 1.537-2.02 2.442-1.107.117-2.154.298-3.113.538-.112-.49-.195-.964-.254-1.42-.23-1.868.054-3.32.714-3.707.19-.09.4-.127.563-.132zm4.882 3.05c.455.468.91.992 1.36 1.564-.44-.02-.89-.034-1.345-.034-.46 0-.915.01-1.36.034.44-.572.895-1.096 1.345-1.565zM12 8.1c.74 0 1.477.034 2.202.093.406.582.802 1.203 1.183 1.86.372.64.71 1.29 1.018 1.946-.308.655-.646 1.31-1.013 1.95-.38.66-.773 1.288-1.18 1.87-.728.063-1.466.098-2.21.098-.74 0-1.477-.035-2.202-.093-.406-.582-.802-1.204-1.183-1.86-.372-.64-.71-1.29-1.018-1.946.303-.657.646-1.313 1.013-1.954.38-.66.773-1.286 1.18-1.868.728-.064 1.466-.098 2.21-.098zm-3.635.254c-.24.377-.48.763-.704 1.16-.225.39-.435.782-.635 1.174-.265-.656-.49-1.31-.676-1.947.64-.15 1.315-.283 2.015-.386zm7.26 0c.695.103 1.365.23 2.006.387-.18.632-.405 1.282-.66 1.933-.2-.39-.41-.783-.64-1.174-.225-.392-.465-.774-.705-1.146zm3.063.675c.484.15.944.317 1.375.498 1.732.74 2.852 1.708 2.852 2.476-.005.768-1.125 1.74-2.857 2.475-.42.18-.88.342-1.355.493-.28-.958-.646-1.956-1.1-2.98.45-1.017.81-2.01 1.085-2.964zm-13.395.004c.278.96.645 1.957 1.1 2.98-.45 1.017-.812 2.01-1.086 2.964-.484-.15-.944-.318-1.37-.5-1.732-.737-2.852-1.706-2.852-2.474 0-.768 1.12-1.742 2.852-2.476.42-.18.88-.342 1.356-.494zm11.678 4.28c.265.657.49 1.312.676 1.948-.64.157-1.316.29-2.016.39.24-.375.48-.762.705-1.158.225-.39.435-.788.636-1.18zm-9.945.02c.2.392.41.783.64 1.175.23.39.465.772.705 1.143-.695-.102-1.365-.23-2.006-.386.18-.63.406-1.282.66-1.933zM17.92 16.32c.112.493.2.968.254 1.423.23 1.868-.054 3.32-.714 3.708-.147.09-.338.128-.563.128-1.012 0-2.514-.807-4.11-2.28.686-.72 1.37-1.536 2.02-2.44 1.107-.118 2.154-.3 3.113-.54zm-11.83.01c.96.234 2.006.415 3.107.532.66.905 1.345 1.727 2.035 2.446-1.595 1.483-3.092 2.295-4.11 2.295-.22-.005-.406-.05-.553-.132-.666-.38-.955-1.834-.73-3.703.054-.46.142-.944.25-1.438zm4.56.64c.44.02.89.034 1.345.034.46 0 .915-.01 1.36-.034-.44.572-.895 1.095-1.345 1.565-.455-.47-.91-.993-1.36-1.565z"/></svg>
+          React 19
+        </span>
+        <span class="px-4 py-2 bg-dark-700 rounded-lg text-sm text-gray-300 flex items-center gap-2">
+          <svg class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 24 24"><path d="M14.25.18l.9.2.73.26.59.3.45.32.34.34.25.34.16.33.1.3.04.26.02.2-.01.13V8.5l-.05.63-.13.55-.21.46-.26.38-.3.31-.33.25-.35.19-.35.14-.33.1-.3.07-.26.04-.21.02H8.77l-.69.05-.59.14-.5.22-.41.27-.33.32-.27.35-.2.36-.15.37-.1.35-.07.32-.04.27-.02.21v3.06H3.17l-.21-.03-.28-.07-.32-.12-.35-.18-.36-.26-.36-.36-.35-.46-.32-.59-.28-.73-.21-.88-.14-1.05-.05-1.23.06-1.22.16-1.04.24-.87.32-.71.36-.57.4-.44.42-.33.42-.24.4-.16.36-.1.32-.05.24-.01h.16l.06.01h8.16v-.83H6.18l-.01-2.75-.02-.37.05-.34.11-.31.17-.28.25-.26.31-.23.38-.2.44-.18.51-.15.58-.12.64-.1.71-.06.77-.04.84-.02 1.27.05zm-6.3 1.98l-.23.33-.08.41.08.41.23.34.33.22.41.09.41-.09.33-.22.23-.34.08-.41-.08-.41-.23-.33-.33-.22-.41-.09-.41.09zm13.09 3.95l.28.06.32.12.35.18.36.27.36.35.35.47.32.59.28.73.21.88.14 1.04.05 1.23-.06 1.23-.16 1.04-.24.86-.32.71-.36.57-.4.45-.42.33-.42.24-.4.16-.36.09-.32.05-.24.02-.16-.01h-8.22v.82h5.84l.01 2.76.02.36-.05.34-.11.31-.17.29-.25.25-.31.24-.38.2-.44.17-.51.15-.58.13-.64.09-.71.07-.77.04-.84.01-1.27-.04-1.07-.14-.9-.2-.73-.25-.59-.3-.45-.33-.34-.34-.25-.34-.16-.33-.1-.3-.04-.25-.02-.2.01-.13v-5.34l.05-.64.13-.54.21-.46.26-.38.3-.32.33-.24.35-.2.35-.14.33-.1.3-.06.26-.04.21-.02.13-.01h5.84l.69-.05.59-.14.5-.21.41-.28.33-.32.27-.35.2-.36.15-.36.1-.35.07-.32.04-.28.02-.21V6.07h2.09l.14.01zm-6.47 14.25l-.23.33-.08.41.08.41.23.33.33.23.41.08.41-.08.33-.23.23-.33.08-.41-.08-.41-.23-.33-.33-.23-.41-.08-.41.08z"/></svg>
+          Python + FastAPI
+        </span>
+        <span class="px-4 py-2 bg-dark-700 rounded-lg text-sm text-gray-300 flex items-center gap-2">
+          <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
+          SQLite
+        </span>
+      </div>
+      <a href="https://github.com/sreenivasanac/file-vyasa" target="_blank" class="inline-flex items-center gap-2 px-6 py-3 bg-dark-700 hover:bg-dark-600 border border-white/10 rounded-xl font-medium transition">
+        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        View on GitHub
+      </a>
+    </div>
+  </section>
+
+  <!-- Download CTA Section -->
+  <section id="download" class="py-20 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-4xl mx-auto">
+      <div class="gradient-border rounded-3xl">
+        <div class="bg-dark-900 rounded-3xl p-8 sm:p-12 text-center">
+          <h2 class="text-3xl sm:text-4xl font-bold mb-4">Ready to Understand Your Files?</h2>
+          <p class="text-gray-400 text-lg mb-8 max-w-xl mx-auto">Download FileVyasa and let AI help you make sense of your digital chaos. Free and open source.</p>
+          <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <a href="#" class="inline-flex items-center gap-3 px-8 py-4 bg-accent-500 hover:bg-accent-600 rounded-xl font-semibold text-lg transition glow w-full sm:w-auto justify-center">
+              <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+              Download for Mac
+            </a>
+            <div class="text-gray-500 text-sm">
+              <span class="block">Windows & Linux coming soon</span>
+            </div>
+          </div>
+          <p class="text-gray-500 text-sm mt-6">Requires macOS 11+, Ollama recommended for local AI</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="py-12 px-4 sm:px-6 lg:px-8 border-t border-white/5">
+    <div class="max-w-7xl mx-auto">
+      <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-accent-500 flex items-center justify-center">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+            </svg>
+          </div>
+          <span class="text-lg font-semibold">FileVyasa</span>
+        </div>
+        <div class="flex items-center gap-6 text-sm text-gray-400">
+          <a href="https://github.com/sreenivasanac/file-vyasa" target="_blank" class="hover:text-white transition">GitHub</a>
+          <a href="https://github.com/sreenivasanac/file-vyasa/issues" target="_blank" class="hover:text-white transition">Issues</a>
+          <a href="https://github.com/sreenivasanac/file-vyasa/blob/main/LICENSE" target="_blank" class="hover:text-white transition">License</a>
+        </div>
+        <div class="text-sm text-gray-500">
+          Built with care by <a href="https://github.com/sreenivasanac" target="_blank" class="text-accent-400 hover:text-accent-300 transition">@sreenivasanac</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scroll Animation Script -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const fadeElements = document.querySelectorAll('.fade-in');
+      
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+          }
+        });
+      }, {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+      });
+      
+      fadeElements.forEach(el => observer.observe(el));
+    });
+  </script>
+</body>
+</html>

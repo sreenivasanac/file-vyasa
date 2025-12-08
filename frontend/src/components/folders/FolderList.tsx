@@ -7,6 +7,7 @@ import { useAppStore } from '@/stores/appStore';
 import { useFolderActions } from '@/hooks/useFolderActions';
 import { Spinner } from '@/components/common/Spinner';
 import { Button } from '@/components/common/Button';
+import { BackendDisconnected } from '@/components/common/BackendDisconnected';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { FolderInfoCard } from './FolderInfoCard';
 import type { MonitoredFolder } from '@/types';
@@ -19,6 +20,7 @@ export function FolderList() {
     setIsSyncing,
     setSyncProgress,
     updateFolder,
+    backendConnected,
   } = useAppStore();
   const queryClient = useQueryClient();
 
@@ -109,12 +111,16 @@ export function FolderList() {
     setFolderToDelete(null);
   };
 
-  if (isLoading) {
+  if (isLoading && backendConnected) {
     return (
       <div className="flex h-64 items-center justify-center">
         <Spinner size="lg" className="text-accent" />
       </div>
     );
+  }
+
+  if (!backendConnected) {
+    return <BackendDisconnected />;
   }
 
   if (!folders || folders.length === 0) {

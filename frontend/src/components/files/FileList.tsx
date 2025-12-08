@@ -8,6 +8,7 @@ import { openPath } from '@tauri-apps/plugin-opener';
 import { FileFilters } from './FileFilters';
 import { FolderTree } from './FolderTree';
 import { FolderInfoCard } from '@/components/folders/FolderInfoCard';
+import { BackendDisconnected } from '@/components/common/BackendDisconnected';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Spinner } from '@/components/common/Spinner';
 import type { FileCategory } from '@/types';
@@ -26,6 +27,7 @@ export function FileList() {
     setIsSyncing,
     setSyncProgress,
     updateFolder,
+    backendConnected,
   } = useAppStore();
 
   const [category, setCategory] = useState<FileCategory | undefined>();
@@ -124,6 +126,10 @@ export function FileList() {
     await deleteFolder();
   };
 
+  if (!backendConnected) {
+    return <BackendDisconnected />;
+  }
+
   if (!currentFolderId) {
     return (
       <div className="flex h-full items-center justify-center text-text-muted">
@@ -138,9 +144,9 @@ export function FileList() {
       {currentFolder && (
         <FolderInfoCard
           folder={currentFolder}
-          onSync={syncFolder}
-          onDelete={() => setShowDeleteConfirm(true)}
-          onCancel={handleCancel}
+          onSync={backendConnected ? syncFolder : undefined}
+          onDelete={backendConnected ? () => setShowDeleteConfirm(true) : undefined}
+          onCancel={backendConnected ? handleCancel : undefined}
           onOpenInFinder={() => currentFolder.root_path && openPath(currentFolder.root_path)}
           isSyncingAction={isSyncingAction}
           isDeleting={isDeleting}

@@ -7,11 +7,11 @@ import type { MonitoredFolder } from '@/types';
 
 interface FolderInfoCardProps {
   folder: MonitoredFolder;
-  onSync: () => void;
-  onDelete: () => void;
+  onSync?: () => void;
+  onDelete?: () => void;
   onCancel?: () => void;
   onOpenInFinder?: () => void;
-  isSyncingAction: boolean;
+  isSyncingAction?: boolean;
   isDeleting?: boolean;
   isCancelling?: boolean;
   /** Sync progress data for ETA calculation (only when syncing) */
@@ -98,49 +98,55 @@ export function FolderInfoCard({
         <div className="flex items-center gap-2">
           {/* Sync/Stop/Continue button */}
           {isSyncing ? (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onCancel?.();
-              }}
-              disabled={isCancelling}
-              className="flex items-center gap-1 rounded px-2 py-1 text-xs text-error hover:bg-error/10 disabled:opacity-50"
-              title="Stop sync"
-            >
-              <Square className="h-3 w-3" />
-              {isCancelling ? 'Stopping...' : 'Stop'}
-            </button>
+            onCancel && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCancel();
+                }}
+                disabled={isCancelling}
+                className="flex items-center gap-1 rounded px-2 py-1 text-xs text-error hover:bg-error/10 disabled:opacity-50"
+                title="Stop sync"
+              >
+                <Square className="h-3 w-3" />
+                {isCancelling ? 'Stopping...' : 'Stop'}
+              </button>
+            )
           ) : (
+            onSync && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSync();
+                }}
+                disabled={isSyncingAction}
+                className="flex items-center gap-1 rounded px-2 py-1 text-xs text-text-secondary hover:bg-bg-hover disabled:opacity-50"
+                title={isCancelled ? 'Continue sync' : 'Sync folder'}
+              >
+                {isCancelled ? (
+                  <Play className="h-3 w-3" />
+                ) : (
+                  <RefreshCw
+                    className={`h-3 w-3 ${isSyncingAction ? 'animate-spin' : ''}`}
+                  />
+                )}
+                {isCancelled ? 'Continue' : 'Sync'}
+              </button>
+            )
+          )}
+          {onDelete && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onSync();
+                onDelete();
               }}
-              disabled={isSyncingAction}
-              className="flex items-center gap-1 rounded px-2 py-1 text-xs text-text-secondary hover:bg-bg-hover disabled:opacity-50"
-              title={isCancelled ? 'Continue sync' : 'Sync folder'}
+              disabled={isDeleting}
+              className="flex items-center gap-1 rounded px-2 py-1 text-xs text-error hover:bg-error/10 disabled:opacity-50"
+              title="Remove folder"
             >
-              {isCancelled ? (
-                <Play className="h-3 w-3" />
-              ) : (
-                <RefreshCw
-                  className={`h-3 w-3 ${isSyncingAction ? 'animate-spin' : ''}`}
-                />
-              )}
-              {isCancelled ? 'Continue' : 'Sync'}
+              <Trash2 className="h-3 w-3" />
             </button>
           )}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            disabled={isDeleting}
-            className="flex items-center gap-1 rounded px-2 py-1 text-xs text-error hover:bg-error/10 disabled:opacity-50"
-            title="Remove folder"
-          >
-            <Trash2 className="h-3 w-3" />
-          </button>
         </div>
       </div>
 

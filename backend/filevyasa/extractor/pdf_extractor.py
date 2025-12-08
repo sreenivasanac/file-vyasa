@@ -1,4 +1,7 @@
-"""PDF extractor using pdfplumber with OCR fallback for image-based PDFs."""
+"""PDF extractor using pdfplumber with OCR fallback for image-based PDFs.
+
+TODO: pypdfium2 4.30.0 has GC assertion errors (cosmetic); upgrade blocked until pdfplumber/doctr support 5.x
+"""
 
 from pathlib import Path
 from typing import Any, Dict, Tuple

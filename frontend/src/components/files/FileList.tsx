@@ -63,7 +63,6 @@ export function FileList() {
         page_size: pageSize,
       }),
     enabled: !!currentFolderId,
-    refetchInterval: isSyncing ? 2000 : false,
   });
 
   // Seed sync state when a folder is selected

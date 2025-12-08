@@ -140,6 +140,7 @@ class Scanner:
         patterns = ignore_patterns or settings.default_ignore_patterns
         self.file_filter = FileFilter(patterns)
         self.folder_id = folder_id or str(uuid4())
+        self._skipped_count = 0
 
     def scan_directory(
         self,
@@ -175,9 +176,9 @@ class Scanner:
             if file_path.is_dir():
                 continue
 
-            # Skip ignored files
+            # Skip ignored files (system files, dev artifacts)
             if self.file_filter.should_ignore(file_path):
-                logger.debug("skipping_ignored_file", path=str(file_path))
+                self._skipped_count += 1
                 continue
 
             try:
@@ -227,15 +228,25 @@ class Scanner:
         self,
         root_path: str | Path,
         recursive: bool = True
-    ) -> List[FileObject]:
+    ) -> tuple[List[FileObject], int]:
         """
-        Scan a directory and return a list of FileObjects.
+        Scan a directory and return a list of FileObjects with skipped count.
 
         Args:
             root_path: Root directory to scan
             recursive: Whether to scan subdirectories
 
         Returns:
-            List of FileObject instances
+            Tuple of (List of FileObject instances, count of skipped system files)
         """
-        return list(self.scan_directory(root_path, recursive))
+        self._skipped_count = 0
+        files = list(self.scan_directory(root_path, recursive))
+        
+        if self._skipped_count > 0:
+            logger.info(
+                "scan_complete",
+                files_found=len(files),
+                system_files_skipped=self._skipped_count
+            )
+        
+        return files, self._skipped_count

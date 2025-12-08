@@ -9,6 +9,8 @@ interface ProcessingFile {
   filename: string;
 }
 
+const POLL_INTERVAL_MS = 5000;
+
 /**
  * Hook for polling folder sync status and currently processing files.
  * Manages sync progress updates and detects completion.
@@ -21,11 +23,19 @@ export function useSyncPolling(
   const queryClient = useQueryClient();
   const { setSyncProgress, setIsSyncing, clearSyncTiming, updateFolder } = useAppStore();
   const [processingFiles, setProcessingFiles] = useState<ProcessingFile[]>([]);
+
+  // Use refs for callbacks to avoid recreating the interval on every render
+  const setSyncProgressRef = useRef(setSyncProgress);
+  const setIsSyncingRef = useRef(setIsSyncing);
   const clearSyncTimingRef = useRef(clearSyncTiming);
+  const updateFolderRef = useRef(updateFolder);
 
   useEffect(() => {
+    setSyncProgressRef.current = setSyncProgress;
+    setIsSyncingRef.current = setIsSyncing;
     clearSyncTimingRef.current = clearSyncTiming;
-  }, [clearSyncTiming]);
+    updateFolderRef.current = updateFolder;
+  }, [setSyncProgress, setIsSyncing, clearSyncTiming, updateFolder]);
 
   useEffect(() => {
     const shouldPoll = !!folderId && (isSyncing || folderStatus === 'syncing');
@@ -35,21 +45,19 @@ export function useSyncPolling(
 
     const pollInterval = setInterval(async () => {
       try {
-        const [folder, processingData] = await Promise.all([
-          api.folders.get(folderId),
-          api.folders.getProcessing(folderId),
-        ]);
+        // Single API call for both folder status and processing files
+        const { folder, processing_files } = await api.folders.getSyncStatus(folderId);
 
-        setSyncProgress({
+        setSyncProgressRef.current({
           total: folder.total_files,
           processed: folder.processed_files,
           failed: folder.failed_files,
         });
 
-        updateFolder(folder);
-        setProcessingFiles(processingData.processing_files);
+        updateFolderRef.current(folder);
+        setProcessingFiles(processing_files);
 
-        setIsSyncing(folder.status === 'syncing');
+        setIsSyncingRef.current(folder.status === 'syncing');
 
         // Detect sync completion
         if (
@@ -57,7 +65,7 @@ export function useSyncPolling(
           folder.status === 'error' ||
           folder.status === 'cancelled'
         ) {
-          setIsSyncing(false);
+          setIsSyncingRef.current(false);
           setProcessingFiles([]);
           clearSyncTimingRef.current();
           queryClient.invalidateQueries({ queryKey: ['folders'] });
@@ -66,13 +74,13 @@ export function useSyncPolling(
       } catch (err) {
         console.error('Failed to poll folder status:', err);
       }
-    }, 1000);
+    }, POLL_INTERVAL_MS);
 
     return () => {
       clearInterval(pollInterval);
       setProcessingFiles([]);
     };
-  }, [folderId, isSyncing, folderStatus, setSyncProgress, setIsSyncing, queryClient, updateFolder]);
+  }, [folderId, isSyncing, folderStatus, queryClient]);
 
   return { processingFiles };
 }

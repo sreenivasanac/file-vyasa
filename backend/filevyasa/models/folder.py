@@ -71,6 +71,7 @@ class MonitoredFolder(MonitoredFolderBase):
     total_files: int = Field(default=0, description="Total files in folder")
     processed_files: int = Field(default=0, description="Files processed in current/last sync")
     failed_files: int = Field(default=0, description="Files that failed processing")
+    skipped_files: int = Field(default=0, description="System files skipped during scan")
 
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.now, description="When folder was added")
@@ -93,6 +94,7 @@ class MonitoredFolderResponse(BaseModel):
     total_files: int
     processed_files: int
     failed_files: int
+    skipped_files: int
 
     # AI processing options
     generate_document_summaries: bool
@@ -130,6 +132,7 @@ class FolderSyncStatus(BaseModel):
     total_files: int
     processed_files: int
     failed_files: int
+    skipped_files: int = Field(default=0, description="System files skipped during scan")
 
     # Sync details
     new_files: int = Field(default=0, description="New files detected")

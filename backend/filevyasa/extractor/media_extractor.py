@@ -203,6 +203,8 @@ class MediaTranscriber:
     def _get_whisper(self):
         """Lazy load whisper and the model."""
         if self._whisper is None:
+            import warnings
+            warnings.filterwarnings("ignore", message="FP16 is not supported on CPU")
             import whisper
             self._whisper = whisper
             logger.info("loading_whisper_model", model=self.model_size)

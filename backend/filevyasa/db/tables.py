@@ -42,6 +42,7 @@ class MonitoredFolderTable(Base):
     generate_image_descriptions: Mapped[bool] = mapped_column(Boolean, default=True)
     extract_media_transcriptions: Mapped[bool] = mapped_column(Boolean, default=True)
     ignore_patterns: Mapped[dict] = mapped_column(JSON, default=list)
+    excluded_paths: Mapped[dict] = mapped_column(JSON, default=list)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)

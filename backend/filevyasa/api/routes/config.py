@@ -57,13 +57,15 @@ class AppConfigResponse(BaseModel):
 @router.get("/", response_model=AppConfigResponse)
 async def get_config():
     """Get current application configuration."""
+    # Combine file patterns and folder names for backward compatibility
+    all_ignore_patterns = list(settings.ignore_file_patterns) + list(settings.ignore_folder_names)
     return AppConfigResponse(
         app_name=settings.app_name,
         version="1.1.0",
         debug=settings.debug,
         db_path=str(settings.db_path),
         max_content_lines=settings.max_content_lines,
-        default_ignore_patterns=settings.default_ignore_patterns,
+        default_ignore_patterns=all_ignore_patterns,
         llm=LLMConfigResponse(
             provider=settings.llm_provider,
             model=settings.llm_model,

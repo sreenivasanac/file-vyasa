@@ -58,10 +58,21 @@ class SyncService:
 
     def _scan_filesystem(self, folder) -> tuple[List[FileObject], int]:
         """Scan filesystem and return list of files with skipped count."""
-        ignore_patterns = (
-            list(folder.ignore_patterns or []) + list(settings.default_ignore_patterns)
+        # Combine default patterns with any folder-specific patterns
+        file_patterns = list(settings.ignore_file_patterns)
+        folder_names = list(settings.ignore_folder_names)
+        excluded_paths = list(folder.excluded_paths or [])
+        
+        # Add any legacy ignore_patterns to file patterns for backward compatibility
+        if folder.ignore_patterns:
+            file_patterns.extend(folder.ignore_patterns)
+        
+        scanner = Scanner(
+            file_patterns=file_patterns,
+            folder_names=folder_names,
+            excluded_paths=excluded_paths,
+            folder_id=self.folder_id,
         )
-        scanner = Scanner(ignore_patterns=ignore_patterns, folder_id=self.folder_id)
         return scanner.scan_to_list(folder.root_path, recursive=True)
 
     def _process_files(

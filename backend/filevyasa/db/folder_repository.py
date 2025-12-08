@@ -65,6 +65,7 @@ def _folder_to_response(folder: MonitoredFolderTable) -> MonitoredFolderResponse
         generate_image_descriptions=folder.generate_image_descriptions,
         extract_media_transcriptions=folder.extract_media_transcriptions,
         ignore_patterns=folder.ignore_patterns or [],
+        excluded_paths=getattr(folder, "excluded_paths", None) or [],
         created_at=folder.created_at,
     )
 
@@ -124,6 +125,7 @@ def create_monitored_folder(
     generate_image_descriptions: bool,
     extract_media_transcriptions: bool,
     ignore_patterns: Optional[List[str]] = None,
+    excluded_paths: Optional[List[str]] = None,
 ) -> MonitoredFolderResponse:
     """Create and persist a new monitored folder.
 
@@ -131,7 +133,8 @@ def create_monitored_folder(
     root_path already exists.
     """
 
-    combined_ignore_patterns: List[str] = list(settings.default_ignore_patterns)
+    # Combine default file patterns with any user-specified patterns
+    combined_ignore_patterns: List[str] = list(settings.ignore_file_patterns)
     if ignore_patterns:
         combined_ignore_patterns.extend(ignore_patterns)
 
@@ -156,6 +159,7 @@ def create_monitored_folder(
             generate_image_descriptions=generate_image_descriptions,
             extract_media_transcriptions=extract_media_transcriptions,
             ignore_patterns=combined_ignore_patterns,
+            excluded_paths=excluded_paths or [],
             created_at=datetime.now(),
         )
 

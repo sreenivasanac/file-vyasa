@@ -1,9 +1,10 @@
 """Directory scanner for file discovery."""
 
 import mimetypes
+import os
 from datetime import datetime
 from pathlib import Path
-from typing import Generator, List
+from typing import Generator, List, Optional
 from uuid import uuid4
 
 import structlog
@@ -123,24 +124,36 @@ def get_file_category(extension: str) -> FileCategory:
 
 
 class Scanner:
-    """Directory scanner for discovering and cataloging files."""
+    """Directory scanner for discovering and cataloging files.
+    
+    Uses os.walk() with directory pruning to efficiently skip ignored folders
+    like node_modules, .git, etc. without traversing into them.
+    """
 
     def __init__(
         self,
-        ignore_patterns: List[str] | None = None,
-        folder_id: str | None = None
+        file_patterns: Optional[List[str]] = None,
+        folder_names: Optional[List[str]] = None,
+        excluded_paths: Optional[List[str]] = None,
+        folder_id: Optional[str] = None,
     ):
         """
         Initialize the scanner.
 
         Args:
-            ignore_patterns: Patterns to ignore (defaults to config patterns)
+            file_patterns: Glob patterns for files to skip (defaults to config)
+            folder_names: Folder names to skip entirely (defaults to config)
+            excluded_paths: Specific paths to exclude (relative to scan root)
             folder_id: Optional folder ID for associating scanned files
         """
-        patterns = ignore_patterns or settings.default_ignore_patterns
-        self.file_filter = FileFilter(patterns)
+        self.file_filter = FileFilter(
+            file_patterns=file_patterns or list(settings.ignore_file_patterns),
+            folder_names=folder_names or list(settings.ignore_folder_names),
+            excluded_paths=excluded_paths or [],
+        )
         self.folder_id = folder_id or str(uuid4())
-        self._skipped_count = 0
+        self._skipped_files = 0
+        self._skipped_dirs = 0
 
     def scan_directory(
         self,
@@ -149,6 +162,9 @@ class Scanner:
     ) -> Generator[FileObject, None, None]:
         """
         Scan a directory and yield FileObject instances.
+
+        Uses os.walk() with topdown=True to prune directories before traversal,
+        avoiding iteration through ignored folders like node_modules.
 
         Args:
             root_path: Root directory to scan
@@ -167,26 +183,44 @@ class Scanner:
         logger.info("starting_scan", root=str(root), recursive=recursive)
 
         if recursive:
-            file_iterator = root.rglob("*")
+            # Use os.walk with topdown=True for efficient directory pruning
+            for dirpath, dirnames, filenames in os.walk(root, topdown=True):
+                current_dir = Path(dirpath)
+                
+                # PRUNE directories in-place to prevent traversal into ignored folders
+                original_count = len(dirnames)
+                dirnames[:] = [
+                    d for d in dirnames
+                    if not self.file_filter.should_skip_directory(current_dir / d, root)
+                ]
+                self._skipped_dirs += original_count - len(dirnames)
+                
+                # Process files in current directory
+                for filename in filenames:
+                    file_path = current_dir / filename
+                    
+                    # Skip ignored files
+                    if self.file_filter.should_skip_file(file_path):
+                        self._skipped_files += 1
+                        continue
+                    
+                    try:
+                        file_obj = self._create_file_object(file_path)
+                        yield file_obj
+                    except Exception as e:
+                        logger.error("error_processing_file", path=str(file_path), error=str(e))
+                        continue
         else:
-            file_iterator = root.glob("*")
-
-        for file_path in file_iterator:
-            # Skip directories
-            if file_path.is_dir():
-                continue
-
-            # Skip ignored files (system files, dev artifacts)
-            if self.file_filter.should_ignore(file_path):
-                self._skipped_count += 1
-                continue
-
-            try:
-                file_obj = self._create_file_object(file_path)
-                yield file_obj
-            except Exception as e:
-                logger.error("error_processing_file", path=str(file_path), error=str(e))
-                continue
+            # Non-recursive: just list top-level files
+            for item in root.iterdir():
+                if item.is_file() and not self.file_filter.should_skip_file(item):
+                    try:
+                        yield self._create_file_object(item)
+                    except Exception as e:
+                        logger.error("error_processing_file", path=str(item), error=str(e))
+                        continue
+                elif item.is_file():
+                    self._skipped_files += 1
 
     def _create_file_object(self, file_path: Path) -> FileObject:
         """Create a FileObject from a file path."""
@@ -237,16 +271,18 @@ class Scanner:
             recursive: Whether to scan subdirectories
 
         Returns:
-            Tuple of (List of FileObject instances, count of skipped system files)
+            Tuple of (List of FileObject instances, count of skipped files)
         """
-        self._skipped_count = 0
+        self._skipped_files = 0
+        self._skipped_dirs = 0
         files = list(self.scan_directory(root_path, recursive))
         
-        if self._skipped_count > 0:
+        if self._skipped_files > 0 or self._skipped_dirs > 0:
             logger.info(
                 "scan_complete",
                 files_found=len(files),
-                system_files_skipped=self._skipped_count
+                skipped_files=self._skipped_files,
+                skipped_directories=self._skipped_dirs
             )
         
-        return files, self._skipped_count
+        return files, self._skipped_files

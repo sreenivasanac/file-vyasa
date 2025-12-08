@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from filevyasa.db.connection import get_session
 from filevyasa.db.tables import FileObjectTable
-from filevyasa.models.enums import FileCategory
+from filevyasa.models.enums import ExtractionStatus
 
 router = APIRouter()
 
@@ -105,7 +105,8 @@ def _build_file_response(file_obj: FileObjectTable) -> FileDetailResponse:
 @router.get("/", response_model=FileListResponse)
 async def list_files(
     folder_id: Optional[str] = Query(None, description="Filter by folder ID"),
-    category: Optional[FileCategory] = Query(None, description="Filter by file category"),
+    categories: Optional[str] = Query(None, description="Filter by categories (comma-separated)"),
+    extraction_status: Optional[ExtractionStatus] = Query(None, description="Filter by extraction status"),
     extension: Optional[str] = Query(None, description="Filter by extension"),
     search: Optional[str] = Query(None, description="Search in filename"),
     page: int = Query(1, ge=1, description="Page number"),
@@ -119,8 +120,15 @@ async def list_files(
     # Apply filters
     if folder_id:
         query = query.filter(FileObjectTable.folder_id == folder_id)
-    if category:
-        query = query.filter(FileObjectTable.category == category.value)
+    
+    if categories:
+        category_list = [c.strip() for c in categories.split(",") if c.strip()]
+        if category_list:
+            query = query.filter(FileObjectTable.category.in_(category_list))
+    
+    if extraction_status:
+        query = query.filter(FileObjectTable.extraction_status == extraction_status.value)
+    
     if extension:
         query = query.filter(FileObjectTable.extension == extension.lower())
     if search:

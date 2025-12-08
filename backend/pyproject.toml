@@ -37,8 +37,8 @@ dependencies = [
     "Pillow>=10.2.0",
     "exifread>=3.0.0",
     
-    # Audio/Video transcription
-    "openai-whisper>=20231117",
+    # Audio/Video transcription (faster-whisper is thread-safe for parallel processing)
+    "faster-whisper>=1.0.0",
     
     # Utilities
     "python-multipart>=0.0.6",

@@ -2,6 +2,7 @@ import type {
   AppConfig,
   CategoryStats,
   ExtensionStats,
+  ExtractionStatus,
   FileCategory,
   FileListResponse,
   FileObject,
@@ -91,7 +92,8 @@ export const api = {
   files: {
     list: (params: {
       folder_id?: string;
-      category?: FileCategory;
+      categories?: FileCategory[];
+      extraction_status?: ExtractionStatus;
       extension?: string;
       search?: string;
       page?: number;
@@ -99,7 +101,10 @@ export const api = {
     }): Promise<FileListResponse> => {
       const searchParams = new URLSearchParams();
       if (params.folder_id) searchParams.set('folder_id', params.folder_id);
-      if (params.category) searchParams.set('category', params.category);
+      if (params.categories && params.categories.length > 0) {
+        searchParams.set('categories', params.categories.join(','));
+      }
+      if (params.extraction_status) searchParams.set('extraction_status', params.extraction_status);
       if (params.extension) searchParams.set('extension', params.extension);
       if (params.search) searchParams.set('search', params.search);
       if (params.page) searchParams.set('page', params.page.toString());

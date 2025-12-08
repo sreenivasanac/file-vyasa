@@ -2,7 +2,7 @@
 
 Contains:
 - MediaExtractor: extracts metadata using ffprobe
-- MediaTranscriber: transcribes audio/video using OpenAI Whisper
+- MediaTranscriber: transcribes audio/video using faster-whisper (thread-safe)
 """
 
 import json
@@ -185,10 +185,13 @@ class MediaExtractor(BaseExtractor):
 
 
 class MediaTranscriber:
-    """Transcribe audio/video files using OpenAI Whisper.
+    """Transcribe audio/video files using faster-whisper.
 
     Extracts the first 10 minutes of audio and transcribes using the 'base' Whisper model.
     This is content extraction, not LLM-based processing.
+
+    Thread-safety: faster-whisper (CTranslate2) is thread-safe and releases the GIL,
+    allowing true parallel transcription via ThreadPoolExecutor.
     """
 
     MODEL_SIZE = "base"
@@ -197,19 +200,25 @@ class MediaTranscriber:
     def __init__(self, model_size: str = "base", max_duration: int = 600):
         self.model_size = model_size
         self.max_duration = max_duration
-        self._whisper = None
         self._model = None
 
-    def _get_whisper(self):
-        """Lazy load whisper and the model."""
-        if self._whisper is None:
-            import warnings
-            warnings.filterwarnings("ignore", message="FP16 is not supported on CPU")
-            import whisper
-            self._whisper = whisper
-            logger.info("loading_whisper_model", model=self.model_size)
-            self._model = whisper.load_model(self.model_size)
-        return self._whisper, self._model
+    def _get_model(self):
+        """Lazy load the faster-whisper model."""
+        if self._model is None:
+            from faster_whisper import WhisperModel
+            logger.info("loading_faster_whisper_model", model=self.model_size)
+            try:
+                self._model = WhisperModel(
+                    self.model_size,
+                    device="cpu",
+                    cpu_threads=4,
+                    compute_type="int8"
+                )
+            except Exception as e:
+                logger.error("whisper_model_load_failed", model=self.model_size, error=str(e))
+                self._model = None
+                raise RuntimeError(f"Failed to load faster-whisper model: {e}")
+        return self._model
 
     def _get_file_duration(self, file_path: Path) -> Optional[float]:
         """Get duration of media file in seconds using ffprobe."""
@@ -277,7 +286,22 @@ class MediaTranscriber:
                              error=result.stderr[:500] if result.stderr else "Unknown error")
                 return False
 
-            return output_file.exists() and output_file.stat().st_size > 0
+            # Validate extracted audio file
+            if not output_file.exists():
+                logger.warning("extracted_audio_missing", path=str(output_file))
+                return False
+
+            file_size = output_file.stat().st_size
+            # WAV header is ~44 bytes; require at least 1KB of actual audio data
+            min_valid_size = 1024
+            if file_size < min_valid_size:
+                logger.warning("extracted_audio_too_small",
+                             path=str(output_file),
+                             size=file_size,
+                             min_required=min_valid_size)
+                return False
+
+            return True
 
         except subprocess.TimeoutExpired:
             logger.warning("ffmpeg_timeout", path=str(input_file))
@@ -348,18 +372,25 @@ class MediaTranscriber:
                 file_obj.extraction_error = "Audio extraction failed"
                 return file_obj
 
-            # Transcribe with Whisper
-            logger.info("transcribing", filename=file_obj.filename)
-            whisper, model = self._get_whisper()
+            # Verify extracted audio file is valid before transcription
+            audio_size = temp_audio_path.stat().st_size
+            logger.debug("extracted_audio_ready",
+                        filename=file_obj.filename,
+                        audio_size=audio_size)
 
-            result = model.transcribe(
+            # Transcribe with faster-whisper (thread-safe, no lock needed)
+            logger.info("transcribing", filename=file_obj.filename)
+            model = self._get_model()
+
+            segments, info = model.transcribe(
                 str(temp_audio_path),
                 language=None,  # Auto-detect language
                 task="transcribe"
             )
 
-            transcription_text = result.get("text", "").strip()
-            detected_language = result.get("language", "unknown")
+            # Collect all segment texts
+            transcription_text = " ".join([segment.text for segment in segments]).strip()
+            detected_language = info.language if info.language else "unknown"
 
             # Store duration in metadata
             if file_obj.metadata is None:
@@ -371,7 +402,7 @@ class MediaTranscriber:
 
                 # Store transcription metadata
                 file_obj.metadata["transcription_language"] = detected_language
-                file_obj.metadata["transcription_model"] = f"whisper-{self.model_size}"
+                file_obj.metadata["transcription_model"] = f"faster-whisper-{self.model_size}"
 
                 logger.info("transcription_complete",
                            filename=file_obj.filename,

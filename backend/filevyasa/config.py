@@ -153,14 +153,11 @@ class Settings(BaseSettings):
         description="Path to Google service account credentials JSON file"
     )
 
-    # Scan settings
-    default_ignore_patterns: list[str] = Field(
-        default=_yaml_config.get("scan", {}).get("default_ignore_patterns", [
+    # Scan settings - file patterns to skip (glob patterns matched against filename)
+    ignore_file_patterns: list[str] = Field(
+        default=_yaml_config.get("scan", {}).get("ignore_file_patterns", [
             # macOS system files
             ".DS_Store",
-            ".Spotlight-V100",
-            ".Trashes",
-            ".fseventsd",
             ".AppleDouble",
             ".LSOverride",
             # Windows system files
@@ -170,15 +167,36 @@ class Settings(BaseSettings):
             # Linux system files
             ".directory",
             # Development artifacts
+            "*.pyc",
+            "*.pyo",
+        ]),
+        description="File patterns to skip (glob patterns)"
+    )
+
+    # Scan settings - folder names to skip entirely (not traversed into)
+    ignore_folder_names: list[str] = Field(
+        default=_yaml_config.get("scan", {}).get("ignore_folder_names", [
+            # macOS system folders
+            ".Spotlight-V100",
+            ".Trashes",
+            ".fseventsd",
+            # Version control
             ".git",
             ".svn",
-            "__pycache__",
+            ".hg",
+            # Package managers / dependencies
             "node_modules",
-            "*.pyc",
+            "bower_components",
+            # Python environments
+            "__pycache__",
             ".venv",
             "venv",
+            ".tox",
+            ".nox",
+            ".pytest_cache",
+            ".mypy_cache",
         ]),
-        description="Default patterns to ignore during scan"
+        description="Folder names to skip entirely (not traversed)"
     )
 
     # Sync parallel processing settings

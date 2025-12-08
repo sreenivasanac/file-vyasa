@@ -74,6 +74,8 @@ def _ensure_new_columns(engine):
     expected = {
         "monitored_folders": [
             ("last_sync_started_at", "DATETIME"),
+            ("skipped_files", "INTEGER DEFAULT 0"),
+            ("excluded_paths", "JSON DEFAULT '[]'"),
         ],
         "file_objects": [
             ("last_extracted_at", "DATETIME"),

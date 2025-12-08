@@ -57,6 +57,7 @@ export interface MonitoredFolder {
   generate_image_descriptions: boolean;
   extract_media_transcriptions: boolean;
   ignore_patterns: string[];
+  excluded_paths: string[];
   created_at: string;
 }
 
@@ -67,6 +68,7 @@ export interface FolderCreateRequest {
   generate_image_descriptions: boolean;
   extract_media_transcriptions: boolean;
   ignore_patterns?: string[];
+  excluded_paths?: string[];
 }
 
 export interface FolderSyncRequest {

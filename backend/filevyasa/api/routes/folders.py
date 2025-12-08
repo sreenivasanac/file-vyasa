@@ -107,6 +107,7 @@ async def add_folder(
             generate_image_descriptions=request.generate_image_descriptions,
             extract_media_transcriptions=request.extract_media_transcriptions,
             ignore_patterns=request.ignore_patterns,
+            excluded_paths=request.excluded_paths,
         )
     except FolderAlreadyMonitoredError:
         raise HTTPException(

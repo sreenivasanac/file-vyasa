@@ -11,7 +11,7 @@ import { FolderInfoCard } from '@/components/folders/FolderInfoCard';
 import { BackendDisconnected } from '@/components/common/BackendDisconnected';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Spinner } from '@/components/common/Spinner';
-import type { FileCategory } from '@/types';
+import type { ExtractionStatus, FileCategory } from '@/types';
 
 export function FileList() {
   const {
@@ -30,7 +30,8 @@ export function FileList() {
     backendConnected,
   } = useAppStore();
 
-  const [category, setCategory] = useState<FileCategory | undefined>();
+  const [categories, setCategories] = useState<FileCategory[]>([]);
+  const [extractionStatus, setExtractionStatus] = useState<ExtractionStatus | undefined>();
   const [search, setSearch] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
@@ -53,11 +54,12 @@ export function FileList() {
   const processingFilePaths = processingFiles.map((f) => f.path);
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['files', currentFolderId, category, search],
+    queryKey: ['files', currentFolderId, categories, extractionStatus, search],
     queryFn: () =>
       api.files.list({
         folder_id: currentFolderId || undefined,
-        category,
+        categories: categories.length > 0 ? categories : undefined,
+        extraction_status: extractionStatus,
         search: search || undefined,
         page: 1,
         page_size: pageSize,
@@ -157,8 +159,10 @@ export function FileList() {
 
       <div className="border-b border-border p-4">
         <FileFilters
-          category={category}
-          onCategoryChange={setCategory}
+          categories={categories}
+          onCategoriesChange={setCategories}
+          extractionStatus={extractionStatus}
+          onExtractionStatusChange={setExtractionStatus}
           search={search}
           onSearchChange={setSearch}
         />

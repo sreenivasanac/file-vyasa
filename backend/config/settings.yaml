@@ -60,12 +60,10 @@ google:
   credentials_path: null
 
 scan:
-  default_ignore_patterns:
+  # File patterns to skip (glob patterns matched against filename)
+  ignore_file_patterns:
     # macOS system files
     - .DS_Store
-    - .Spotlight-V100
-    - .Trashes
-    - .fseventsd
     - .AppleDouble
     - .LSOverride
     # Windows system files
@@ -75,19 +73,36 @@ scan:
     # Linux system files
     - .directory
     # Development artifacts
+    - '*.pyc'
+    - '*.pyo'
+
+  # Folder names to skip entirely (not traversed into)
+  ignore_folder_names:
+    # macOS system folders
+    - .Spotlight-V100
+    - .Trashes
+    - .fseventsd
+    # Version control
     - .git
     - .svn
-    - __pycache__
+    - .hg
+    # Package managers / dependencies
     - node_modules
-    - '*.pyc'
+    - bower_components
+    # Python environments
+    - __pycache__
     - .venv
     - venv
+    - .tox
+    - .nox
+    - .pytest_cache
+    - .mypy_cache
 
 sync:
   # Number of parallel workers for content extraction
-  extraction_workers: 8
+  extraction_workers: 16
   # Number of parallel workers for AI processing
-  ai_workers: 4
+  ai_workers: 8
   # Batch size for database operations (smaller = more responsive UI, 1 = per-file updates)
   db_batch_size: 1
   # Enable parallel processing during sync

@@ -25,7 +25,10 @@ class MonitoredFolderBase(BaseModel):
         default=True, description="Extract transcriptions from audio/video"
     )
     ignore_patterns: list[str] = Field(
-        default_factory=list, description="Patterns to ignore during sync"
+        default_factory=list, description="File patterns to ignore during sync"
+    )
+    excluded_paths: list[str] = Field(
+        default_factory=list, description="Specific folder paths to exclude (relative to root)"
     )
 
 
@@ -44,7 +47,10 @@ class MonitoredFolderCreate(BaseModel):
         default=True, description="Extract transcriptions from audio/video"
     )
     ignore_patterns: Optional[list[str]] = Field(
-        default=None, description="Additional patterns to ignore"
+        default=None, description="Additional file patterns to ignore"
+    )
+    excluded_paths: Optional[list[str]] = Field(
+        default=None, description="Specific folder paths to exclude (relative to root)"
     )
 
 
@@ -101,6 +107,7 @@ class MonitoredFolderResponse(BaseModel):
     generate_image_descriptions: bool
     extract_media_transcriptions: bool
     ignore_patterns: list[str]
+    excluded_paths: list[str]
 
     created_at: datetime
 

@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { open } from '@tauri-apps/plugin-dialog';
 import { FolderOpen, Plus } from 'lucide-react';
 import { Button } from '@/components/common/Button';
+import { BackendDisconnected } from '@/components/common/BackendDisconnected';
 import { useAppStore } from '@/stores/appStore';
 import { api } from '@/api/client';
 import { AddFolderOptions } from './AddFolderOptions';
@@ -42,10 +43,15 @@ export function AddFolder() {
 
   // Determine if Add Folder button should be disabled
   const canAddFolder = () => {
-    if (!selectedPath || !backendConnected) return false;
+    if (!selectedPath) return false;
     if (generateImageDescriptions && llavaStatus && !llavaStatus.available) return false;
     return true;
   };
+
+  // Show disconnected state when backend is not available
+  if (!backendConnected) {
+    return <BackendDisconnected />;
+  }
 
   const handleSelectFolder = async () => {
     try {
@@ -183,12 +189,6 @@ export function AddFolder() {
           <Plus className="mr-2 h-5 w-5" />
           {isAdding ? 'Adding...' : 'Add Folder'}
         </Button>
-
-        {!backendConnected && (
-          <p className="mt-4 text-center text-sm text-warning">
-            Backend is not connected. Please start the backend server first.
-          </p>
-        )}
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import * as Tabs from '@radix-ui/react-tabs';
 import { api } from '@/api/client';
 import { Spinner } from '@/components/common/Spinner';
+import { BackendDisconnected } from '@/components/common/BackendDisconnected';
 import { useAppStore, type SettingsSection } from '@/stores/appStore';
 import { cn } from '@/lib/utils';
 import { SettingsOverviewTab } from './SettingsOverviewTab';
@@ -17,6 +18,7 @@ export function SettingsPanel() {
     setSettingsSection,
     clearSettingsContext,
     setCurrentView,
+    backendConnected,
   } = useAppStore();
 
   const activeTab: SettingsSection = settingsSection ?? 'overview';
@@ -28,6 +30,10 @@ export function SettingsPanel() {
     queryKey: ['config'],
     queryFn: api.config.get,
   });
+
+  if (!backendConnected) {
+    return <BackendDisconnected />;
+  }
 
   if (isLoading) {
     return (

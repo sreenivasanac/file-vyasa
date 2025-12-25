@@ -90,6 +90,8 @@ scan:
 
 ## Architecture
 
+![FileVyasa Architecture](../docs/architecture_diagram.png)
+
 ```
 filevyasa/
 ├── api/

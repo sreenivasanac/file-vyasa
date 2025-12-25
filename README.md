@@ -20,6 +20,10 @@ FileVyasa is a personal AI assistant that scans, understands, and organizes loca
 - **Desktop App** — Native cross-platform Tauri app with file browser, search, and filtering
 - **Parallel Processing** — Configurable concurrent extraction and AI processing for fast scans
 
+## Architecture
+
+![FileVyasa Architecture](docs/architecture_diagram.png)
+
 ## Project Structure
 
 ```

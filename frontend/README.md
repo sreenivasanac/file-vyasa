@@ -2,6 +2,10 @@
 
 Cross-platform desktop app built with Tauri 2.x + React 19.
 
+## Architecture
+
+![FileVyasa Architecture](../docs/architecture_diagram.png)
+
 ## Tech Stack
 
 - **Framework**: Tauri 2.x + Vite 7 + React 19 (TypeScript)

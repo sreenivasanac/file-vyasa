@@ -24,6 +24,10 @@ FileVyasa is a personal AI assistant that scans, understands, and organizes loca
 
 ![FileVyasa Architecture](docs/architecture_diagram.png)
 
+### Data Flow Pipeline
+
+![Data Flow Pipeline](docs/data_flow_diagram.png)
+
 ## Project Structure
 
 ```

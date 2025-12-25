@@ -92,6 +92,14 @@ scan:
 
 ![FileVyasa Architecture](../docs/architecture_diagram.png)
 
+### Data Flow Pipeline
+
+![Data Flow Pipeline](../docs/data_flow_diagram.png)
+
+### Database Schema
+
+![Database Schema](../docs/database_schema.png)
+
 ```
 filevyasa/
 ├── api/

@@ -7,17 +7,6 @@ Primary scope for V1. x: single-folder triage on macOS with basic planning UI an
 
 ---
 
-Create a suitable file structure for this project - 
-   after going through how the project will be evolving in v1 and v2:
-    @agentic_development_docs/project_design_plan/0_fil
-   evyasa_design_plan_v1.md 
-   
-@agentic_development_docs/p
-   roject_design_plan/0_filevyasa_design_plan_v2.md 
-   @agentic_development_docs/project_design_plan/initia
-   l_plan.md @agentic_development_docs/project_design_p
-   lan/tech_stack.md  .
-
 ## V1.1 — Minimal End‑to‑End Slice (Scan → Summarise → Simple Suggestions)
 
 ### Product Goal (v1.1)
@@ -137,7 +126,6 @@ Update file with the following attributes:
   - Use cluster labels + user-provided high-level rules/prompts + summaries/metadata to derive proposed folder names (via LLM prompt).
   - No file-operation scores yet; just destination suggestions.
 - UI: introduce three-panel layout (scan summary, suggested folders/clusters, selected item detail) aligned with overall vision, but interactions stay simple.
-
 ---
 
 ## V1.4 — Action Planning & Approval State (Still No Execution)

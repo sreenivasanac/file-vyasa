@@ -1,8 +1,11 @@
 """Extractor module for content extraction from files."""
 
+# ruff: noqa: E402
+
 import warnings
 
-# TODO: Remove when pdfplumber/python-doctr support pypdfium2 5.x (4.30.1 yanked, 5.x has breaking changes)
+# TODO: Remove when pdfplumber/python-doctr support pypdfium2 5.x (4.30.1 yanked).
+# 5.x has breaking changes.
 warnings.filterwarnings("ignore", message=".*_tree_closed.*")
 
 from filevyasa.extractor.base import BaseExtractor, MarkItDownMixin

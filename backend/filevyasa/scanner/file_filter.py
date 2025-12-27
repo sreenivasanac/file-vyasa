@@ -7,7 +7,7 @@ from typing import List, Optional, Set
 
 class FileFilter:
     """Filter files and directories based on patterns.
-    
+
     Supports three types of filtering:
     1. File patterns - glob patterns matched against filenames (e.g., "*.pyc", ".DS_Store")
     2. Folder names - folder names to skip entirely (e.g., "node_modules", ".git")
@@ -46,7 +46,7 @@ class FileFilter:
         # Check folder name
         if dir_path.name in self.folder_names:
             return True
-        
+
         # Check user-excluded paths (relative to root)
         if self.excluded_paths:
             try:
@@ -61,7 +61,7 @@ class FileFilter:
                         return True
             except ValueError:
                 pass
-        
+
         return False
 
     def should_skip_file(self, file_path: Path) -> bool:

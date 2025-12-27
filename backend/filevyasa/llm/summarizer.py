@@ -78,7 +78,7 @@ class Summarizer:
 
         LiteLLM uses provider prefixes to route requests. See:
         https://docs.litellm.ai/docs/providers
-        
+
         Note: ollama_cloud uses OpenAI-compatible API at https://ollama.com/v1,
         so we use the openai/ prefix to tell LiteLLM to use OpenAI routing.
         """

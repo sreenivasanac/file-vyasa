@@ -62,11 +62,11 @@ class SyncService:
         file_patterns = list(settings.ignore_file_patterns)
         folder_names = list(settings.ignore_folder_names)
         excluded_paths = list(folder.excluded_paths or [])
-        
+
         # Add any legacy ignore_patterns to file patterns for backward compatibility
         if folder.ignore_patterns:
             file_patterns.extend(folder.ignore_patterns)
-        
+
         scanner = Scanner(
             file_patterns=file_patterns,
             folder_names=folder_names,

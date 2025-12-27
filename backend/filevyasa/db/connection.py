@@ -34,7 +34,9 @@ def init_db() -> None:
     global _engine, _session_maker
 
     db_url = get_db_url()
-    _engine = create_engine(db_url, echo=False)
+    _engine = create_engine(
+        db_url, echo=False, connect_args={"check_same_thread": False}
+    )
     _session_maker = sessionmaker(bind=_engine)
 
     # Create all tables

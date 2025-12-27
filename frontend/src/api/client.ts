@@ -136,7 +136,7 @@ export const api = {
 
   // Config endpoints
   config: {
-    get: (): Promise<AppConfig> => request('/config'),
+    get: (): Promise<AppConfig> => request('/config/'),
 
     updateLLM: (data: LLMConfigUpdate): Promise<LLMConfig> =>
       request('/config/llm', {

@@ -78,11 +78,13 @@ def _run_sync_task(
             from filevyasa.db.tables import MonitoredFolderTable
 
             session = get_session()
-            folder = session.query(MonitoredFolderTable).filter_by(id=folder_id).first()
-            if folder and folder.status == "syncing":
-                folder.status = "error"
-                session.commit()
-            session.close()
+            try:
+                folder = session.query(MonitoredFolderTable).filter_by(id=folder_id).first()
+                if folder and folder.status == "syncing":
+                    folder.status = "error"
+                    session.commit()
+            finally:
+                session.close()
         except Exception:
             pass
         # Clean up tracking state

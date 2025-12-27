@@ -22,10 +22,14 @@ Provide:
 2. A detailed description (2-4 sentences): Describe the scene, notable objects,
    colors, composition, and any relevant context.
 3. Filename assessment: Evaluate the current filename and suggest a better one if needed.
-   - "good": Descriptive, meaningful name (e.g., "sunset_beach_hawaii_2024.jpg")
-   - "acceptable": Adequate but could be improved (e.g., "beach_photo.jpg")
-   - "poor": Vague or unhelpful (e.g., "photo1.jpg", "image.png", "pic.jpg")
-   - "meaningless": Arbitrary/auto-generated name (e.g., "IMG_0001.jpg", "DSC_1234.png")
+   - "good": Descriptive, meaningful name (e.g., "Discharge Summary Sakra Hospital.pdf" , 
+     "Resume_John_adams.pdf", "i140_rec_by_class_country_fy2024_q3.xlsx", "Driving License_Virginia.pdf",
+     "dreber-et-al-2015-using-prediction-markets.pdf")
+   - "acceptable": Adequate but could be improved (e.g., "beach_photo.jpg", "pancard.jpeg")
+   - "poor": Vague, generic names or computer generated IDs (e.g., "photo1.jpg", "image.png", "IMG_0001.jpg", "DSC_1234.png"
+     "ssstwitter.com_1764435559460.mp4",
+     "WhatsApp Image 2025-07-22 at 17.38.01.jpeg", "Screenshot 2025-10-28 at 1.24 AM.png")
+   - "meaningless": Arbitrary, unhelpful name (e.g."Untitled.pdf", "HyL793zMncZV_HxE.mp4")
 
 Respond in this exact JSON format:
 {{

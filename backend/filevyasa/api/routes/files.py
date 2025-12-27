@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from filevyasa.db.connection import get_session
 from filevyasa.db.tables import FileObjectTable
-from filevyasa.models.enums import ExtractionStatus
+from filevyasa.models.enums import ExtractionStatus, FilenameQuality
 
 router = APIRouter()
 
@@ -107,6 +107,7 @@ async def list_files(
     folder_id: Optional[str] = Query(None, description="Filter by folder ID"),
     categories: Optional[str] = Query(None, description="Filter by categories (comma-separated)"),
     extraction_status: Optional[ExtractionStatus] = Query(None, description="Filter by extraction status"),
+    filename_quality: Optional[FilenameQuality] = Query(None, description="Filter by filename quality"),
     extension: Optional[str] = Query(None, description="Filter by extension"),
     search: Optional[str] = Query(None, description="Search in filename"),
     page: int = Query(1, ge=1, description="Page number"),
@@ -128,6 +129,9 @@ async def list_files(
     
     if extraction_status:
         query = query.filter(FileObjectTable.extraction_status == extraction_status.value)
+    
+    if filename_quality:
+        query = query.filter(FileObjectTable.filename_quality == filename_quality.value)
     
     if extension:
         query = query.filter(FileObjectTable.extension == extension.lower())

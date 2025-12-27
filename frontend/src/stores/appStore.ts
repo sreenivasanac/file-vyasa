@@ -52,7 +52,9 @@ interface AppState {
 
   // Backend status
   backendConnected: boolean;
+  backendChecked: boolean;
   setBackendConnected: (connected: boolean) => void;
+  setBackendChecked: (checked: boolean) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -110,5 +112,7 @@ export const useAppStore = create<AppState>((set) => ({
 
   // Backend status
   backendConnected: false,
+  backendChecked: false,
   setBackendConnected: (connected) => set({ backendConnected: connected }),
+  setBackendChecked: (checked) => set({ backendChecked: checked }),
 }));

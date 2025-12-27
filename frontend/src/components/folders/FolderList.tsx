@@ -21,6 +21,7 @@ export function FolderList() {
     setSyncProgress,
     updateFolder,
     backendConnected,
+    backendChecked,
   } = useAppStore();
   const queryClient = useQueryClient();
 
@@ -104,7 +105,8 @@ export function FolderList() {
     setFolderToDelete(null);
   };
 
-  if (isLoading && backendConnected) {
+  // Show loading while checking backend connection
+  if (!backendChecked || (isLoading && backendConnected)) {
     return (
       <div className="flex h-64 items-center justify-center">
         <Spinner size="lg" className="text-accent" />
@@ -112,6 +114,7 @@ export function FolderList() {
     );
   }
 
+  // Show disconnected only after we've checked and confirmed backend is not connected
   if (!backendConnected) {
     return <BackendDisconnected />;
   }

@@ -11,7 +11,7 @@ import { FolderInfoCard } from '@/components/folders/FolderInfoCard';
 import { BackendDisconnected } from '@/components/common/BackendDisconnected';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Spinner } from '@/components/common/Spinner';
-import type { ExtractionStatus, FileCategory } from '@/types';
+import type { ExtractionStatus, FileCategory, FilenameQuality } from '@/types';
 
 export function FileList() {
   const {
@@ -28,10 +28,12 @@ export function FileList() {
     setSyncProgress,
     updateFolder,
     backendConnected,
+    backendChecked,
   } = useAppStore();
 
   const [categories, setCategories] = useState<FileCategory[]>([]);
   const [extractionStatus, setExtractionStatus] = useState<ExtractionStatus | undefined>();
+  const [filenameQuality, setFilenameQuality] = useState<FilenameQuality | undefined>();
   const [search, setSearch] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
@@ -54,12 +56,13 @@ export function FileList() {
   const processingFilePaths = processingFiles.map((f) => f.path);
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['files', currentFolderId, categories, extractionStatus, search],
+    queryKey: ['files', currentFolderId, categories, extractionStatus, filenameQuality, search],
     queryFn: () =>
       api.files.list({
         folder_id: currentFolderId || undefined,
         categories: categories.length > 0 ? categories : undefined,
         extraction_status: extractionStatus,
+        filename_quality: filenameQuality,
         search: search || undefined,
         page: 1,
         page_size: pageSize,
@@ -127,6 +130,15 @@ export function FileList() {
     await deleteFolder();
   };
 
+  // Show loading while checking backend connection
+  if (!backendChecked) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Spinner size="lg" className="text-accent" />
+      </div>
+    );
+  }
+
   if (!backendConnected) {
     return <BackendDisconnected />;
   }
@@ -163,6 +175,8 @@ export function FileList() {
           onCategoriesChange={setCategories}
           extractionStatus={extractionStatus}
           onExtractionStatusChange={setExtractionStatus}
+          filenameQuality={filenameQuality}
+          onFilenameQualityChange={setFilenameQuality}
           search={search}
           onSearchChange={setSearch}
         />

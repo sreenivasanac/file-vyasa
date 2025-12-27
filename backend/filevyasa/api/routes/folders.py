@@ -1,10 +1,12 @@
 """Folder API endpoints for managing monitored folders and sync operations."""
 
 import os
+import threading
+import traceback
 from typing import List, Optional
 
 import structlog
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, HTTPException
 
 from filevyasa.db.folder_repository import (
     FolderAlreadyMonitoredError,
@@ -52,19 +54,66 @@ def _run_sync_task(
     generate_image_descriptions: bool,
     extract_media_transcriptions: bool,
 ):
-    """Background task wrapper for SyncService."""
-    service = SyncService(
-        folder_id=folder_id,
-        generate_document_summaries=generate_document_summaries,
-        generate_image_descriptions=generate_image_descriptions,
-        extract_media_transcriptions=extract_media_transcriptions,
+    """Background task wrapper for SyncService with top-level error recovery."""
+    import sys
+    try:
+        service = SyncService(
+            folder_id=folder_id,
+            generate_document_summaries=generate_document_summaries,
+            generate_image_descriptions=generate_image_descriptions,
+            extract_media_transcriptions=extract_media_transcriptions,
+        )
+        service.run()
+    except Exception as e:
+        traceback.print_exc(file=sys.stderr)
+        logger.error(
+            "sync_thread_crashed",
+            folder_id=folder_id,
+            error=str(e),
+            traceback=traceback.format_exc(),
+        )
+        # Ensure folder status is reset on crash
+        try:
+            from filevyasa.db.connection import get_session
+            from filevyasa.db.tables import MonitoredFolderTable
+
+            session = get_session()
+            folder = session.query(MonitoredFolderTable).filter_by(id=folder_id).first()
+            if folder and folder.status == "syncing":
+                folder.status = "error"
+                session.commit()
+            session.close()
+        except Exception:
+            pass
+        # Clean up tracking state
+        ProcessingTracker.remove(folder_id)
+        CancellationManager.cleanup(folder_id)
+
+
+def _start_sync_in_thread(
+    folder_id: str,
+    generate_document_summaries: bool,
+    generate_image_descriptions: bool,
+    extract_media_transcriptions: bool,
+):
+    """Start sync in a daemon thread to avoid blocking the event loop."""
+    thread = threading.Thread(
+        target=_run_sync_task,
+        args=(
+            folder_id,
+            generate_document_summaries,
+            generate_image_descriptions,
+            extract_media_transcriptions,
+        ),
+        daemon=True,
+        name=f"sync-{folder_id[:8]}",
     )
-    service.run()
+    thread.start()
 
 
 @router.post("", response_model=MonitoredFolderResponse)
 async def add_folder(
-    request: MonitoredFolderCreate, background_tasks: BackgroundTasks
+    request: MonitoredFolderCreate,
 ):
     """Add a new folder to monitor. Auto-syncs after adding.
 
@@ -116,8 +165,7 @@ async def add_folder(
         ) from None
 
     # Auto-sync in background
-    background_tasks.add_task(
-        _run_sync_task,
+    _start_sync_in_thread(
         folder.id,
         folder.generate_document_summaries,
         folder.generate_image_descriptions,
@@ -159,7 +207,6 @@ async def delete_folder(folder_id: str):
 async def sync_folder(
     folder_id: str,
     request: Optional[FolderSyncRequest] = None,
-    background_tasks: BackgroundTasks = None,
 ):
     """Sync a folder - detect and process new/modified/deleted files."""
     try:
@@ -175,8 +222,7 @@ async def sync_folder(
         raise HTTPException(status_code=409, detail="Folder is already syncing") from None
 
     # Start sync in background
-    background_tasks.add_task(
-        _run_sync_task,
+    _start_sync_in_thread(
         folder_id,
         generate_document_summaries,
         generate_image_descriptions,

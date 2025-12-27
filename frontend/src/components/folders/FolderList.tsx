@@ -164,9 +164,9 @@ export function FolderList() {
         title="Remove Folder"
         message={
           <>
-            Remove this folder from monitoring?{' '}
+            Stop tracking this folder?{' '}
             <span className="font-medium text-text-primary">
-              Your files will not be deleted.
+              Your original files will remain safe on your device.
             </span>
           </>
         }

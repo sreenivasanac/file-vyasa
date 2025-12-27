@@ -69,12 +69,21 @@ Both services must run concurrently. The frontend connects to the backend at `ht
 
 FileVyasa uses [LiteLLM](https://docs.litellm.ai/docs/providers) which supports 100+ LLM providers.
 
-### Ollama (Local, Recommended)
+### Ollama (Local, Recommended for Privacy)
 ```bash
 ollama pull llama3.2        # For document summaries
 ollama pull llava           # For image descriptions (optional)
 ```
-No API key required—runs entirely on your machine.
+No API key required—runs entirely on your machine. Best for privacy-sensitive use cases.
+
+### Ollama Cloud (Powerful GPU Servers)
+Access larger models (like `gpt-oss:120b`) running on Ollama's high-end GPU infrastructure when your local hardware can't handle them.
+
+1. Sign up at [ollama.com](https://ollama.com) and get an API key from [settings/keys](https://ollama.com/settings/keys)
+2. Select "Ollama Cloud" as provider in Settings
+3. Enter your API key
+
+Available models: `gpt-oss:120b`, `gpt-oss:20b`, `qwen3:8b`, `qwen3:4b`, `llama3.1:70b`, `gemma3:27b`, `deepseek-r1:70b`
 
 ### Cloud Providers (OpenAI, Anthropic, Gemini, Groq, DeepSeek, etc.)
 ```bash

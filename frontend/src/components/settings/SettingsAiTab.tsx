@@ -1,6 +1,6 @@
 import { useState, useRef, useLayoutEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Save, Check, AlertCircle, Server, Cloud, ShieldCheck, Cpu, Image } from 'lucide-react';
+import { Save, Check, AlertCircle, Server, Cloud, ShieldCheck, Cpu, Image, Globe } from 'lucide-react';
 import { api } from '@/api/client';
 import { Button } from '@/components/common/Button';
 import { Badge } from '@/components/common/Badge';
@@ -17,6 +17,14 @@ const PROVIDERS = {
     defaultApiBase: 'http://localhost:11434',
     models: ['llama3.2', 'llama3.1', 'llama3', 'mistral', 'mixtral', 'phi3', 'gemma2', 'qwen2.5', 'codellama'],
     description: 'Run models locally. No API key required.',
+  },
+  ollama_cloud: {
+    name: 'Ollama Cloud',
+    icon: Globe,
+    requiresApiKey: true,
+    defaultApiBase: 'https://ollama.com/v1',
+    models: ['gpt-oss:120b', 'gpt-oss:20b', 'qwen3:8b', 'qwen3:4b', 'llama3.1:70b', 'gemma3:27b', 'deepseek-r1:70b'],
+    description: 'Powerful cloud models hosted by Ollama on high-end GPU servers.',
   },
   openai: {
     name: 'OpenAI',
@@ -171,7 +179,7 @@ export function SettingsAiTab({ config, highlightLlm }: SettingsAiTabProps) {
             <label className="mb-2 block text-sm font-medium text-text-secondary">
               Provider
             </label>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-5 gap-2">
               {(Object.keys(PROVIDERS) as ProviderKey[]).map((key) => {
                 const providerConfig = PROVIDERS[key];
                 const Icon = providerConfig.icon;
@@ -203,6 +211,20 @@ export function SettingsAiTab({ config, highlightLlm }: SettingsAiTabProps) {
                   <p className="mt-1 text-text-muted">
                     Ollama runs entirely on your device. Your file contents never leave your
                     computer, ensuring complete privacy and data security.
+                  </p>
+                </div>
+              </div>
+            ) : provider === 'ollama_cloud' ? (
+              <div className="mt-3 flex items-start gap-2 rounded-md border border-accent/50 bg-accent/10 p-3">
+                <Globe className="mt-0.5 h-4 w-4 flex-shrink-0 text-accent" />
+                <div className="text-xs">
+                  <p className="font-medium text-accent">Ollama Cloud - Powerful GPU Servers</p>
+                  <p className="mt-1 text-text-muted">
+                    Access larger, more powerful models running on Ollama's high-end GPU infrastructure.
+                    Ideal when your local hardware can't handle large models. File contents are processed
+                    on Ollama's secure servers. Get your API key at{' '}
+                    <a href="https://ollama.com/settings/keys" target="_blank" rel="noopener noreferrer"
+                       className="text-accent hover:underline">ollama.com/settings/keys</a>.
                   </p>
                 </div>
               </div>

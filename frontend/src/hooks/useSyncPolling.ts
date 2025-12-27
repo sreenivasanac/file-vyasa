@@ -59,6 +59,11 @@ export function useSyncPolling(
 
         setIsSyncingRef.current(folder.status === 'syncing');
 
+        // Invalidate files query during sync to show newly processed files
+        if (folder.status === 'syncing') {
+          queryClient.invalidateQueries({ queryKey: ['files'] });
+        }
+
         // Detect sync completion
         if (
           folder.status === 'idle' ||

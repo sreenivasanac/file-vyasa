@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { Search, X, ChevronDown, Check } from 'lucide-react';
 import * as Select from '@radix-ui/react-select';
-import type { ExtractionStatus, FileCategory } from '@/types';
+import type { ExtractionStatus, FileCategory, FilenameQuality } from '@/types';
 import { getCategoryLabel } from '@/lib/utils';
 
 interface FileFiltersProps {
@@ -9,6 +9,8 @@ interface FileFiltersProps {
   onCategoriesChange: (categories: FileCategory[]) => void;
   extractionStatus: ExtractionStatus | undefined;
   onExtractionStatusChange: (status: ExtractionStatus | undefined) => void;
+  filenameQuality: FilenameQuality | undefined;
+  onFilenameQualityChange: (quality: FilenameQuality | undefined) => void;
   search: string;
   onSearchChange: (search: string) => void;
 }
@@ -31,6 +33,13 @@ const statusLabels: Record<ExtractionStatus, string> = {
   success: 'Completed',
   failed: 'Failed',
   skipped: 'Skipped',
+};
+
+const filenameQualityLabels: Record<FilenameQuality, string> = {
+  good: 'Good',
+  acceptable: 'Acceptable',
+  poor: 'Poor',
+  meaningless: 'Meaningless',
 };
 
 function CategoryMultiSelect({
@@ -129,6 +138,8 @@ export function FileFilters({
   onCategoriesChange,
   extractionStatus,
   onExtractionStatusChange,
+  filenameQuality,
+  onFilenameQualityChange,
   search,
   onSearchChange,
 }: FileFiltersProps) {
@@ -188,6 +199,49 @@ export function FileFilters({
                   className="relative flex h-9 cursor-pointer items-center rounded-sm px-8 text-sm text-text-primary outline-none hover:bg-bg-tertiary data-[highlighted]:bg-bg-tertiary"
                 >
                   <Select.ItemText>{statusLabels[status]}</Select.ItemText>
+                  <Select.ItemIndicator className="absolute left-2">
+                    <Check className="h-4 w-4" />
+                  </Select.ItemIndicator>
+                </Select.Item>
+              ))}
+            </Select.Viewport>
+          </Select.Content>
+        </Select.Portal>
+      </Select.Root>
+
+      <Select.Root
+        value={filenameQuality || 'all'}
+        onValueChange={(value) =>
+          onFilenameQualityChange(value === 'all' ? undefined : (value as FilenameQuality))
+        }
+      >
+        <Select.Trigger className="inline-flex h-10 w-40 items-center justify-between rounded-md border border-border bg-bg-tertiary px-3 text-sm text-text-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent">
+          <Select.Value placeholder="All Quality" />
+          <Select.Icon>
+            <ChevronDown className="h-4 w-4 text-text-muted" />
+          </Select.Icon>
+        </Select.Trigger>
+
+        <Select.Portal>
+          <Select.Content className="overflow-hidden rounded-md border border-border bg-bg-secondary shadow-lg">
+            <Select.Viewport className="p-1">
+              <Select.Item
+                value="all"
+                className="relative flex h-9 cursor-pointer items-center rounded-sm px-8 text-sm text-text-primary outline-none hover:bg-bg-tertiary data-[highlighted]:bg-bg-tertiary"
+              >
+                <Select.ItemText>All Quality</Select.ItemText>
+                <Select.ItemIndicator className="absolute left-2">
+                  <Check className="h-4 w-4" />
+                </Select.ItemIndicator>
+              </Select.Item>
+
+              {(Object.keys(filenameQualityLabels) as FilenameQuality[]).map((quality) => (
+                <Select.Item
+                  key={quality}
+                  value={quality}
+                  className="relative flex h-9 cursor-pointer items-center rounded-sm px-8 text-sm text-text-primary outline-none hover:bg-bg-tertiary data-[highlighted]:bg-bg-tertiary"
+                >
+                  <Select.ItemText>{filenameQualityLabels[quality]}</Select.ItemText>
                   <Select.ItemIndicator className="absolute left-2">
                     <Check className="h-4 w-4" />
                   </Select.ItemIndicator>

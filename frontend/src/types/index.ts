@@ -12,6 +12,8 @@ export type FileCategory =
 
 export type ExtractionStatus = 'pending' | 'success' | 'failed' | 'skipped';
 
+export type FilenameQuality = 'good' | 'acceptable' | 'poor' | 'meaningless';
+
 export type FolderStatus = 'idle' | 'syncing' | 'cancelled' | 'error';
 
 export interface FileObject {
@@ -36,6 +38,8 @@ export interface FileObject {
   extraction_status: ExtractionStatus;
   extraction_error: string | null;
   is_password_protected: boolean;
+  filename_quality: FilenameQuality | null;
+  suggested_filename: string | null;
   scanned_at: string;
   summarized_at: string | null;
 }

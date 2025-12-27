@@ -4,6 +4,7 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { FolderOpen, Plus } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 import { BackendDisconnected } from '@/components/common/BackendDisconnected';
+import { Spinner } from '@/components/common/Spinner';
 import { useAppStore } from '@/stores/appStore';
 import { api } from '@/api/client';
 import { AddFolderOptions } from './AddFolderOptions';
@@ -25,6 +26,7 @@ export function AddFolder() {
     setCurrentView,
     setSettingsSection,
     backendConnected,
+    backendChecked,
     addFolder,
   } = useAppStore();
 
@@ -32,13 +34,14 @@ export function AddFolder() {
   const { data: config } = useQuery({
     queryKey: ['config'],
     queryFn: api.config.get,
+    enabled: backendConnected,
   });
 
   // Check llava availability when image descriptions is enabled
   const { data: llavaStatus, isLoading: isCheckingLlava } = useQuery({
     queryKey: ['llava-status'],
     queryFn: api.config.checkLlavaStatus,
-    enabled: generateImageDescriptions,
+    enabled: generateImageDescriptions && backendConnected,
   });
 
   // Determine if Add Folder button should be disabled
@@ -47,6 +50,15 @@ export function AddFolder() {
     if (generateImageDescriptions && llavaStatus && !llavaStatus.available) return false;
     return true;
   };
+
+  // Show loading while checking backend connection
+  if (!backendChecked) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Spinner size="lg" className="text-accent" />
+      </div>
+    );
+  }
 
   // Show disconnected state when backend is not available
   if (!backendConnected) {

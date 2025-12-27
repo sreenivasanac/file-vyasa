@@ -5,6 +5,7 @@ import type {
   ExtractionStatus,
   FileCategory,
   FileListResponse,
+  FilenameQuality,
   FileObject,
   FolderCreateRequest,
   FolderSyncRequest,
@@ -94,6 +95,7 @@ export const api = {
       folder_id?: string;
       categories?: FileCategory[];
       extraction_status?: ExtractionStatus;
+      filename_quality?: FilenameQuality;
       extension?: string;
       search?: string;
       page?: number;
@@ -105,6 +107,7 @@ export const api = {
         searchParams.set('categories', params.categories.join(','));
       }
       if (params.extraction_status) searchParams.set('extraction_status', params.extraction_status);
+      if (params.filename_quality) searchParams.set('filename_quality', params.filename_quality);
       if (params.extension) searchParams.set('extension', params.extension);
       if (params.search) searchParams.set('search', params.search);
       if (params.page) searchParams.set('page', params.page.toString());

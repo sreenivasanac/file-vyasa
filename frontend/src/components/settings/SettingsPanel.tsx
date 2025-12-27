@@ -19,6 +19,7 @@ export function SettingsPanel() {
     clearSettingsContext,
     setCurrentView,
     backendConnected,
+    backendChecked,
   } = useAppStore();
 
   const activeTab: SettingsSection = settingsSection ?? 'overview';
@@ -29,18 +30,20 @@ export function SettingsPanel() {
   const { data: config, isLoading } = useQuery({
     queryKey: ['config'],
     queryFn: api.config.get,
+    enabled: backendConnected,
   });
 
-  if (!backendConnected) {
-    return <BackendDisconnected />;
-  }
-
-  if (isLoading) {
+  // Show loading while checking backend connection
+  if (!backendChecked || isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
         <Spinner size="lg" className="text-accent" />
       </div>
     );
+  }
+
+  if (!backendConnected) {
+    return <BackendDisconnected />;
   }
 
   const handleTabChange = (value: string) => {

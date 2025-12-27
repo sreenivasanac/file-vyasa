@@ -9,6 +9,7 @@ import json
 import os
 import subprocess
 import tempfile
+import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -196,29 +197,42 @@ class MediaTranscriber:
 
     MODEL_SIZE = "base"
     MAX_DURATION_SECONDS = 600  # 10 minutes
+    
+    # Class-level shared model (singleton pattern)
+    _model_lock = threading.Lock()
+    _shared_model = None  # Class-level model - shared across all instances
 
     def __init__(self, model_size: str = "base", max_duration: int = 600):
         self.model_size = model_size
         self.max_duration = max_duration
-        self._model = None
 
-    def _get_model(self):
-        """Lazy load the faster-whisper model."""
-        if self._model is None:
-            from faster_whisper import WhisperModel
-            logger.info("loading_faster_whisper_model", model=self.model_size)
-            try:
-                self._model = WhisperModel(
-                    self.model_size,
-                    device="cpu",
-                    cpu_threads=4,
-                    compute_type="int8"
-                )
-            except Exception as e:
-                logger.error("whisper_model_load_failed", model=self.model_size, error=str(e))
-                self._model = None
-                raise RuntimeError(f"Failed to load faster-whisper model: {e}")
-        return self._model
+    @classmethod
+    def _get_model(cls):
+        """Lazy load the faster-whisper model (thread-safe singleton)."""
+        import sys
+        if cls._shared_model is None:
+            print(f"[WHISPER] Thread waiting for model lock...", file=sys.stderr, flush=True)
+            with cls._model_lock:
+                # Double-check after acquiring lock
+                if cls._shared_model is None:
+                    print(f"[WHISPER] Loading model (this takes ~60 seconds)...", file=sys.stderr, flush=True)
+                    from faster_whisper import WhisperModel
+                    logger.info("loading_faster_whisper_model", model=cls.MODEL_SIZE)
+                    try:
+                        cls._shared_model = WhisperModel(
+                            cls.MODEL_SIZE,
+                            device="cpu",
+                            cpu_threads=4,
+                            compute_type="int8"
+                        )
+                        print(f"[WHISPER] Model loaded successfully!", file=sys.stderr, flush=True)
+                    except Exception as e:
+                        print(f"[WHISPER] Model load FAILED: {e}", file=sys.stderr, flush=True)
+                        logger.error("whisper_model_load_failed", model=cls.MODEL_SIZE, error=str(e))
+                        raise RuntimeError(f"Failed to load faster-whisper model: {e}")
+                else:
+                    print(f"[WHISPER] Model already loaded by another thread", file=sys.stderr, flush=True)
+        return cls._shared_model
 
     def _get_file_duration(self, file_path: Path) -> Optional[float]:
         """Get duration of media file in seconds using ffprobe."""
@@ -382,15 +396,22 @@ class MediaTranscriber:
             logger.info("transcribing", filename=file_obj.filename)
             model = self._get_model()
 
+            import sys
+            print(f"[TRANSCRIBE] Starting transcription for: {file_obj.filename[:50]}...", file=sys.stderr, flush=True)
+            
             segments, info = model.transcribe(
                 str(temp_audio_path),
                 language=None,  # Auto-detect language
                 task="transcribe"
             )
 
+            print(f"[TRANSCRIBE] Got segments generator, collecting text...", file=sys.stderr, flush=True)
+            
             # Collect all segment texts
             transcription_text = " ".join([segment.text for segment in segments]).strip()
             detected_language = info.language if info.language else "unknown"
+            
+            print(f"[TRANSCRIBE] Transcription done: {len(transcription_text)} chars, lang={detected_language}", file=sys.stderr, flush=True)
 
             # Store duration in metadata
             if file_obj.metadata is None:

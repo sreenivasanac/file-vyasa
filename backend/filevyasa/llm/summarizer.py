@@ -79,12 +79,13 @@ class Summarizer:
         LiteLLM uses provider prefixes to route requests. See:
         https://docs.litellm.ai/docs/providers
         
-        Note: ollama_cloud uses OpenAI-compatible API, so no prefix is needed.
-        The API key and base URL handle the routing.
+        Note: ollama_cloud uses OpenAI-compatible API at https://ollama.com/v1,
+        so we use the openai/ prefix to tell LiteLLM to use OpenAI routing.
         """
         # Providers that need prefix for LiteLLM routing
         PREFIXED_PROVIDERS = {
             "ollama": "ollama/",
+            "ollama_cloud": "openai/",  # Uses OpenAI-compatible API
             "anthropic": "anthropic/",
             "gemini": "gemini/",
             "groq": "groq/",
@@ -92,10 +93,6 @@ class Summarizer:
             "together_ai": "together_ai/",
             "fireworks_ai": "fireworks_ai/",
         }
-
-        # ollama_cloud uses OpenAI-compatible API, no prefix needed
-        if self.provider == "ollama_cloud":
-            return self.model
 
         prefix = PREFIXED_PROVIDERS.get(self.provider, "")
         if prefix and not self.model.startswith(prefix):
@@ -167,6 +164,10 @@ class Summarizer:
 
             if self.api_base:
                 kwargs["api_base"] = self.api_base
+
+            # Pass API key explicitly for providers that require it
+            if self.api_key:
+                kwargs["api_key"] = self.api_key
 
             response = litellm.completion(**kwargs)
 

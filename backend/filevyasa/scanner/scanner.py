@@ -125,7 +125,7 @@ def get_file_category(extension: str) -> FileCategory:
 
 class Scanner:
     """Directory scanner for discovering and cataloging files.
-    
+
     Uses os.walk() with directory pruning to efficiently skip ignored folders
     like node_modules, .git, etc. without traversing into them.
     """
@@ -186,7 +186,7 @@ class Scanner:
             # Use os.walk with topdown=True for efficient directory pruning
             for dirpath, dirnames, filenames in os.walk(root, topdown=True):
                 current_dir = Path(dirpath)
-                
+
                 # PRUNE directories in-place to prevent traversal into ignored folders
                 original_count = len(dirnames)
                 dirnames[:] = [
@@ -194,16 +194,16 @@ class Scanner:
                     if not self.file_filter.should_skip_directory(current_dir / d, root)
                 ]
                 self._skipped_dirs += original_count - len(dirnames)
-                
+
                 # Process files in current directory
                 for filename in filenames:
                     file_path = current_dir / filename
-                    
+
                     # Skip ignored files
                     if self.file_filter.should_skip_file(file_path):
                         self._skipped_files += 1
                         continue
-                    
+
                     try:
                         file_obj = self._create_file_object(file_path)
                         yield file_obj
@@ -276,7 +276,7 @@ class Scanner:
         self._skipped_files = 0
         self._skipped_dirs = 0
         files = list(self.scan_directory(root_path, recursive))
-        
+
         if self._skipped_files > 0 or self._skipped_dirs > 0:
             logger.info(
                 "scan_complete",
@@ -284,5 +284,5 @@ class Scanner:
                 skipped_files=self._skipped_files,
                 skipped_directories=self._skipped_dirs
             )
-        
+
         return files, self._skipped_files

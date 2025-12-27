@@ -215,7 +215,11 @@ class MediaTranscriber:
             with cls._model_lock:
                 # Double-check after acquiring lock
                 if cls._shared_model is None:
-                    print("[WHISPER] Loading model (this takes ~60 seconds)...", file=sys.stderr, flush=True)
+                    print(
+                        "[WHISPER] Loading model (this takes ~60 seconds)...",
+                        file=sys.stderr,
+                        flush=True,
+                    )
                     from faster_whisper import WhisperModel
                     logger.info("loading_faster_whisper_model", model=cls.MODEL_SIZE)
                     try:
@@ -228,10 +232,18 @@ class MediaTranscriber:
                         print("[WHISPER] Model loaded successfully!", file=sys.stderr, flush=True)
                     except Exception as e:
                         print(f"[WHISPER] Model load FAILED: {e}", file=sys.stderr, flush=True)
-                        logger.error("whisper_model_load_failed", model=cls.MODEL_SIZE, error=str(e))
+                        logger.error(
+                            "whisper_model_load_failed",
+                            model=cls.MODEL_SIZE,
+                            error=str(e),
+                        )
                         raise RuntimeError(f"Failed to load faster-whisper model: {e}")
                 else:
-                    print("[WHISPER] Model already loaded by another thread", file=sys.stderr, flush=True)
+                    print(
+                        "[WHISPER] Model already loaded by another thread",
+                        file=sys.stderr,
+                        flush=True,
+                    )
         return cls._shared_model
 
     def _get_file_duration(self, file_path: Path) -> Optional[float]:
@@ -397,7 +409,11 @@ class MediaTranscriber:
             model = self._get_model()
 
             import sys
-            print(f"[TRANSCRIBE] Starting transcription for: {file_obj.filename[:50]}...", file=sys.stderr, flush=True)
+            print(
+                f"[TRANSCRIBE] Starting transcription for: {file_obj.filename[:50]}...",
+                file=sys.stderr,
+                flush=True,
+            )
 
             segments, info = model.transcribe(
                 str(temp_audio_path),
@@ -405,13 +421,22 @@ class MediaTranscriber:
                 task="transcribe"
             )
 
-            print("[TRANSCRIBE] Got segments generator, collecting text...", file=sys.stderr, flush=True)
+            print(
+                "[TRANSCRIBE] Got segments generator, collecting text...",
+                file=sys.stderr,
+                flush=True,
+            )
 
             # Collect all segment texts
             transcription_text = " ".join([segment.text for segment in segments]).strip()
             detected_language = info.language if info.language else "unknown"
 
-            print(f"[TRANSCRIBE] Transcription done: {len(transcription_text)} chars, lang={detected_language}", file=sys.stderr, flush=True)
+            print(
+                f"[TRANSCRIBE] Transcription done: {len(transcription_text)} chars, "
+                f"lang={detected_language}",
+                file=sys.stderr,
+                flush=True,
+            )
 
             # Store duration in metadata
             if file_obj.metadata is None:

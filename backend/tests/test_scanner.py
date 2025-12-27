@@ -116,20 +116,20 @@ class TestScanner:
 
         assert "nested.txt" in recursive_names
         assert "nested.txt" not in flat_names
-    
+
     def test_skipped_count_for_system_files(self, tmp_path):
         """Test that system files are counted as skipped."""
         # Create a .DS_Store file
         ds_store = tmp_path / ".DS_Store"
         ds_store.write_text("fake DS_Store")
-        
+
         # Create a regular file
         regular = tmp_path / "regular.txt"
         regular.write_text("regular content")
-        
+
         scanner = Scanner()
         files, skipped = scanner.scan_to_list(tmp_path)
-        
+
         assert len(files) == 1
         assert files[0].filename == "regular.txt"
         assert skipped == 1  # .DS_Store should be skipped
@@ -140,18 +140,18 @@ class TestScanner:
         nm = tmp_path / "node_modules" / "pkg" / "deep"
         nm.mkdir(parents=True)
         (nm / "file.js").write_text("content")
-        
+
         # Create __pycache__ with files
         pycache = tmp_path / "__pycache__"
         pycache.mkdir()
         (pycache / "test.pyc").write_text("bytecode")
-        
+
         # Create regular file
         (tmp_path / "app.js").write_text("content")
-        
+
         scanner = Scanner()
         files, skipped = scanner.scan_to_list(tmp_path)
-        
+
         # Should only find app.js
         assert len(files) == 1
         assert files[0].filename == "app.js"
@@ -164,18 +164,18 @@ class TestScanner:
         vendor = tmp_path / "vendor" / "lib"
         vendor.mkdir(parents=True)
         (vendor / "external.js").write_text("content")
-        
+
         # Create build directory
         build = tmp_path / "build"
         build.mkdir()
         (build / "output.js").write_text("content")
-        
+
         # Create regular file
         (tmp_path / "app.js").write_text("content")
-        
+
         scanner = Scanner(excluded_paths=["vendor", "build"])
         files, skipped = scanner.scan_to_list(tmp_path)
-        
+
         # Should only find app.js
         assert len(files) == 1
         assert files[0].filename == "app.js"

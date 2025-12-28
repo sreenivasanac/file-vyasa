@@ -58,6 +58,7 @@ class CodeExtractor(NonContentExtractor):
             "json",
             # Config/data formats
             "yaml", "yml", "env", "jsonl",
+            "toml", "ini", "conf", "cfg", "log",
             # JS/TS ecosystem variants
             "cjs", "cts", "mjs", "mts", "flow",
             # C/C++ variants
@@ -136,7 +137,7 @@ class UnhandledExtractor(NonContentExtractor):
             # Data/binary files
             "pkl", "pickle", "npy", "npz", "h5", "hdf5",
             # Config/lock files
-            "lock", "toml",
+            "lock",
             # macOS specific
             "scpt", "workflow",
             # Mobile/app files

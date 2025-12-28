@@ -21,7 +21,7 @@ class OfficeExtractor(MarkItDownMixin, BaseExtractor):
         return [
             # Microsoft Office
             "docx", "doc",
-            "xlsx", "xls", "csv",
+            "xlsx", "xls", "csv", "tsv",
             "pptx", "ppt",
             # Rich Text
             "rtf",
@@ -62,8 +62,8 @@ class OfficeExtractor(MarkItDownMixin, BaseExtractor):
         metadata["extraction_method"] = "fallback"
         ext = file_path.suffix.lower()
 
-        # CSV can be read as text
-        if ext == ".csv":
+        # CSV/TSV can be read as text
+        if ext in (".csv", ".tsv"):
             try:
                 content = file_path.read_text(encoding="utf-8")
                 metadata["extraction_method"] = "text_read"

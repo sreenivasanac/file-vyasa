@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional, Tuple
 
 from filevyasa.config import settings
 from filevyasa.extractor.base import BaseExtractor
+from filevyasa.extractor.epub_extractor import EpubExtractor
 from filevyasa.extractor.google_workspace_extractor import GoogleDocsExtractor
 from filevyasa.extractor.image_extractor import ImageExtractor
 from filevyasa.extractor.media_extractor import MediaExtractor
@@ -26,6 +27,7 @@ _extractors: list[BaseExtractor] = [
     TextExtractor(),
     PDFExtractor(),
     OfficeExtractor(),
+    EpubExtractor(),
     NotebookExtractor(),
     WebContentExtractor(),
     ImageExtractor(),

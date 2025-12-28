@@ -12,7 +12,7 @@ class TextExtractor(BaseExtractor):
     @classmethod
     def supported_extensions(cls) -> list[str]:
         return [
-            "txt", "md", "markdown", "rst", "log", "ini", "cfg", "conf",
+            "txt", "md", "markdown", "rst",
             # Subtitles
             "srt", "vtt",
             # Document markup
